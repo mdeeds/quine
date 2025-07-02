@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>WebGL Matrix Multiplication</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #333;
+      color: #eee;
+      font-family: monospace;
+    }
+
+    canvas {
+      border: 1px solid #555;
+    }
+
+    #info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 10px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="glcanvas" width="64" height="64"></canvas>
+  <div id="info">
+    <p>WebGL Matrix Multiplication (64x64)</p>
+    <p>Status: Initializing...</p>
+  </div>
+  <script src="script.js"></script>
+</body>
+
+</html>

@@ -6,33 +6,45 @@ in vec2 texCoord; // Interpolated texture coordinate from the vertex shader
 
 uniform sampler2D matrixA; // Texture containing matrix A
 uniform sampler2D matrixB; // Texture containing matrix B
-uniform int matrixSize;    // Size of the square matrices (e.g., 64 for 64x64)
+// Width and height of the two matricies
+uniform int A_width;
+uniform int A_height;
+uniform int B_width;
+// Note: A_width === B_height
 
 out vec4 fragColor; // Output color (the computed matrix element)
 
 void main() {
     // Determine the current row and column of the output matrix C
     // texCoord.x maps to column, texCoord.y maps to row
-    int colC = int(texCoord.x * float(matrixSize));
-    int rowC = int(texCoord.y * float(matrixSize));
+    // Output matrix C has dimensions B_width x A_height
+    // Subtract 0.5 here for the half-texel offset
+    int colC = int(texCoord.x * float(B_width) - 0.5); 
+    int rowC = int(texCoord.y * float(A_height) - 0.5);
 
     float sum = 0.0;
+    int B_height = A_width;
 
-  // Perform the dot product for the current element C[rowC][colC]
-  // C[i][j] = sum(A[i][k] * B[k][j]) for k from 0 to matrixSize-1
-  for (int k = 0; k < matrixSize; ++k) {
-        // Get element A[rowC][k] from matrixA
-        // Texture coordinates for A: (k / matrixSize, rowC / matrixSize)
-        vec2 texCoordA = vec2(float(k) / float(matrixSize), float(rowC) / float(matrixSize));
-        float elementA = texture(matrixA, texCoordA).r; // Assuming red channel stores the value
+    // Pre-calculate the increments for the texture coordinates to avoid division in the loop.
+    // d_texCoordA corresponds to moving 1 step in k (the x-direction for matrix A).
+    vec2 d_texCoordA = vec2(1.0 / float(A_width), 0.0);
+    // d_texCoordB corresponds to moving 1 step in k (the y-direction for matrix B).
+    vec2 d_texCoordB = vec2(0.0, 1.0 / float(B_height));
 
-        // Get element B[k][colC] from matrixB
-        // Texture coordinates for B: (colC / matrixSize, k / matrixSize)
-        vec2 texCoordB = vec2(float(colC) / float(matrixSize), float(k) / float(matrixSize));
-        float elementB = texture(matrixB, texCoordB).r; // Assuming red channel stores the value
+    // Calculate the starting texture coordinates for k=0, sampling the center of the texel.
+    vec2 texCoordA = vec2(0.5 / float(A_width), (float(rowC) + 0.5) / float(A_height));
+    vec2 texCoordB = vec2((float(colC) + 0.5) / float(B_width), 0.5 / float(B_height));
 
-    sum += elementA * elementB;
-  }
+    // Perform the dot product for the current element C[colC][rowC]
+    for (int k = 0; k < A_width; ++k) {
+        float elementA = texture(matrixA, texCoordA).r;
+        float elementB = texture(matrixB, texCoordB).r;
+        sum += elementA * elementB;
+
+        // Increment coordinates for the next iteration
+        texCoordA += d_texCoordA;
+        texCoordB += d_texCoordB;
+    }
 
   // Output the computed element.
   // Store it in the red channel, or all channels if you prefer grayscale.

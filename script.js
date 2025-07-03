@@ -29,7 +29,7 @@ async function main() {
       logInfo(`<p>Iteration: ${i} </p>` +
         `<p>WebGL Matrix Multiplication (${matrixSize}x${matrixSize})</p>` +
         `<p>Status: Computation complete.</p><p>Time: ${computationTime.toFixed(2)} ms</p> ` +
-        `<p>${madsPerSecond.toFixed(0)} MADS/S</p>`);
+        `<p>${(madsPerSecond / 1e9).toFixed(3)} Giga MADS/S</p>`);
     }
   }
   const resultValues = gpu.readPixels(c);

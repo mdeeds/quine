@@ -7,34 +7,29 @@ class LogicalMatrix {
    * @param {number} width 
    * @param {number} height 
    */
-  constructor(context, width, height) {
+  constructor(context, width, height, initialization = 'random') {
     this.width = width;
     this.height = height;
     this.context = context;
-    this.texture = undefined;
-  }
-
-  initializeRandom() {
-    if (this.texture) {
-      this.context.gl.deleteTexture(this.texture);
+    let texture = undefined;
+    switch (initialization) {
+      case 'random':
+        texture = this._createFloatTexture(this._createRandomData());
+        break;
+      case 'identity':
+        texture = this._createFloatTexture(this._createIdentityData());
+        break;
+      case 'zero':
+        const zeroData = new Float32Array(this.width * this.height);
+        texture = this._createFloatTexture(zeroData);
+        break;
+      default:
+        throw 'Invalid initialization type'
     }
-    this.texture = this._createFloatTexture(this._createRandomData());
-  }
-
-  initializeIdentity() {
-    if (this.texture) {
-      this.context.gl.deleteTexture(this.texture);
+    if (!texture) {
+      throw new Error('Failed to create texture.');
     }
-    this.texture = this._createFloatTexture(this._createIdentityData());
-  }
-
-  initializeZero() {
-    if (this.texture) {
-      this.context.gl.deleteTexture(this.texture);
-    }
-    // All elements are 0.0 by default
-    const zeroData = new Float32Array(this.width * this.height);
-    this.texture = this._createFloatTexture(zeroData);
+    this.texture = texture;
   }
 
   /**

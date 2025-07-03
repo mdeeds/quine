@@ -1,42 +1,27 @@
 // @ts-check
 
-class TextureHandle {
-  /**
-   * @param {WebGLTexture!} texture 
-   * @param {number} width 
-   * @param {number} height 
-   */
-  constructor(texture, width, height) {
-    this.texture = texture;
-    this.width = width;
-    this.height = height;
-  }
-}
-
-class MatrixMultiplyProgram {
-  constructor(program) {
-    this.program = program;
-    this.matrixA_Loc = this.program.getUniformLocation('matrixA');
-    this.matrixB_Loc = this.program.getUniformLocation('matrixB');
-    this.aWidthLoc = this.program.getUniformLocation('A_width');
-    this.aHeightLoc = this.program.getUniformLocation('A_height');
-    this.bWidthLoc = this.program.getUniformLocation('B_width');
-  }
-}
-
 class Gpu {
   /**
-   * 
+   * Do not use this constructor. Please use the async create method instead.
    * @param {WebGL2RenderingContext} gl 
+   * @param {WebGLFramebuffer} fbo
    */
-  constructor(gl) {
+  constructor(gl, fbo) {
     this.gl = gl;
+    /** @type {Context} */
+    this.context = new Context(gl, fbo);
+    /** @type {string | undefined} */
+    this.mm_fragment = undefined;
+    /** @type {WebGLBuffer | null} */
+    this.quadPositionBuffer = null;
+    /** @type {WebGLBuffer | null} */
+    this.quadTexCoordBuffer = null;
   }
 
   /**
-   * @returns {Promise<Gpu!>}
+   * @returns {Promise<Gpu>}
    */
-  async create() {
+  static async create() {
     const canvas = document.createElement('canvas');
     const gl = canvas.getContext('webgl2');
 
@@ -51,67 +36,37 @@ class Gpu {
       throw new Error('This browser does not support the EXT_color_buffer_float ' +
         'extension, which is required for rendering to float textures.');
     }
-    const gpu = new Gpu(gl);
+    const fbo = gl.createFramebuffer();
+    if (!fbo) {
+      throw new Error('Failed to create framebuffer.');
+    }
+    const gpu = new Gpu(gl, fbo);
     await gpu._initialize();
     return gpu;
   }
 
   /**
-   * Creates a texture from a Float32Array.
-   * @param {Float32Array?} data 
-   * @param {number} width 
-   * @param {number} height 
-   * @returns {TextureHandle!}
-   */
-  createFloatTexture(data = null, width, height) {
-    const texture = this.gl.createTexture();
-    this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R32F, width, height, 0,
-      this.gl.RED, this.gl.FLOAT, data);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-    this.gl.bindTexture(this.gl.TEXTURE_2D, null);
-    return new TextureHandle(texture, width, height);
-  }
-
-  /**
-   * @param {TextureHandle} texture 
+   * @param {WebGLTexture} texture 
    * @returns {void}
    */
   deleteTexture(texture) {
-    this.gl.deleteTexture(texture.texture);
+    this.gl.deleteTexture(texture);
   }
 
   /**
-   * 
-   * @param {WebGLTexture!} texture 
-   * @returns {WebGLFramebuffer!}
+   * @param {LogicalMatrix!} a 
+   * @param {LogicalMatrix!} b
+   * @param {LogicalMatrix!} c 
    */
-  _createFramebuffer(texture) {
-    // Framebuffer Object (FBO) for rendering to textureC
-    const fbo = this.gl.createFramebuffer();
-    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, fbo);
-    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, texture, 0);
-
-    const fboStatus = this.gl.checkFramebufferStatus(this.gl.FRAMEBUFFER);
-    if (fboStatus !== this.gl.FRAMEBUFFER_COMPLETE) {
-      console.error('Framebuffer not complete:', fboStatus);
-      throw new Error('Framebuffer not complete: ' + fboStatus);
+  executeMatrixMultiply(a, b, c) {
+    if (!this.mm_program) {
+      throw new Error('Matrix multiply program not initialized.');
     }
-    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null); // Unbind FBO
-    return fbo;
+    this.mm_program.execute(a, b, c);
   }
 
   /**
-   * @param {WebGLFramebuffer} fbo 
-   * @returns {void}
-   */
-  _deleteFramebuffer(fbo) {
-    this.gl.deleteFramebuffer(fbo);
   }
-
   /*********************************
    *      PRIVATE METHODS
    *********************************/
@@ -120,7 +75,16 @@ class Gpu {
    * @returns {Promise<void>}
    */
   async _initialize() {
+    this._createQuadBuffers();
     this.mm_fragment = await (await fetch('mm-fragment.glsl')).text();
+    if (!this.mm_fragment) {
+      throw new Error('Gpu not initialized or fragment shader failed to load.');
+    }
+    const program = this._createProgram(this.mm_fragment);
+    if (!program) {
+      throw new Error('Failed to create matrix multiply program.');
+    }
+    this.mm_program = new _MatrixMultiplyProgram(this.context, program);
     return;
   }
 
@@ -191,11 +155,9 @@ class Gpu {
   }
 
   /**
-   * Adds our standard unit quads to the shader program.
-   * @param {WebGLProgram} shaderProgram 
-   * @returns {BufferInfo!}
+   * Creates the buffers for the unit quad. These are created once and reused.
    */
-  _setupQuad(shaderProgram) {
+  _createQuadBuffers() {
     const positions = new Float32Array([
       -1.0, 1.0, 0.0, // Top-left
       -1.0, -1.0, 0.0, // Bottom-left
@@ -209,75 +171,126 @@ class Gpu {
       1.0, 1.0, // Top-right
       1.0, 0.0, // Bottom-right
     ]);
-    const positionBuffer = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, positionBuffer);
+    this.quadPositionBuffer = this.gl.createBuffer();
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadPositionBuffer);
     this.gl.bufferData(this.gl.ARRAY_BUFFER, positions, this.gl.STATIC_DRAW);
 
-    const texCoordBuffer = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, texCoordBuffer);
+    this.quadTexCoordBuffer = this.gl.createBuffer();
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadTexCoordBuffer);
     this.gl.bufferData(this.gl.ARRAY_BUFFER, texCoords, this.gl.STATIC_DRAW);
+  }
 
+  /**
+   * Adds our standard unit quads to the shader program.
+   * @param {WebGLProgram} shaderProgram 
+   */
+  _setupQuad(shaderProgram) {
     // Set up vertex attribute pointers
     const posAttribLoc = this.gl.getAttribLocation(shaderProgram, 'aPos');
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, positionBuffer);
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadPositionBuffer);
     this.gl.vertexAttribPointer(posAttribLoc, 3, this.gl.FLOAT, false, 0, 0);
     this.gl.enableVertexAttribArray(posAttribLoc);
 
     const texAttribLoc = this.gl.getAttribLocation(shaderProgram, 'aTexCoord');
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, texCoordBuffer);
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadTexCoordBuffer);
     this.gl.vertexAttribPointer(texAttribLoc, 2, this.gl.FLOAT, false, 0, 0);
     this.gl.enableVertexAttribArray(texAttribLoc);
-    return { positionBuffer, texCoordBuffer };
   }
 
 
   /**
-   * @param {WebGLFramebuffer} fbo 
-   * @param {number} width 
-   * @param {number} height 
-   * @param {WebGLTexture} textureA 
-   * @param {WebGLTexture} textureB 
-   * @param {WebGLUniformLocation} matrixA_Loc 
-   * @param {WebGLUniformLocation} matrixB_Loc 
-   * @returns {void}
-   */
-  computeMatrixProduct(fbo, width, height, textureA, textureB, matrixA_Loc, matrixB_Loc) {
-    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, fbo); // Render to textureC
-    this.gl.viewport(0, 0, width, height); // Ensure viewport matches texture size
-
-    // Activate textures and assign uniforms
-    this.gl.activeTexture(this.gl.TEXTURE0);
-    this.gl.bindTexture(this.gl.TEXTURE_2D, textureA);
-    this.gl.uniform1i(matrixA_Loc, 0); // texture unit 0
-
-    this.gl.activeTexture(this.gl.TEXTURE1);
-    this.gl.bindTexture(this.gl.TEXTURE_2D, textureB);
-    this.gl.uniform1i(matrixB_Loc, 1); // texture unit 1
-
-    this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4); // Draw the quad
-  }
-
-  /**
-   * 
-   * @param {WebGLFramebuffer} fbo 
-   * @param {WebGLTexture} texture 
-   * @param {number} width 
-   * @param {number} height 
+   * Reads the pixel data from a texture back to the CPU.
+   * @param {LogicalMatrix} matrix
    * @returns {Float32Array}
    */
-  readPixels(fbo, texture, width, height) {
-    // Bind the final result texture (which is now `textureA` after the last swap)
-    // as the source for reading pixels.
-    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, fbo);
-    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, texture, 0); // Ensure FBO is pointing to the final A
+  readPixels(matrix) {
+    const { texture, width, height } = matrix;
+    const gl = this.gl;
+    const fbo = this.context.fbo;
+
+    // Bind the framebuffer and attach the texture to read from.
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+
+    // Check if the FBO is complete before reading.
+    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+      throw new Error('Framebuffer not complete for reading pixels.');
+    }
 
     const finalResult = new Float32Array(width * height);
     this.gl.readPixels(0, 0, width, height, this.gl.RED, this.gl.FLOAT, finalResult);
+
+    // Unbind the FBO.
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
     return finalResult;
   }
 
 }
 
-/**
- * @typedef {{positionBuffer: WebGLBuffer, texCoordBuffer: WebGLBuffer}} BufferInfo
- */
+class _MatrixMultiplyProgram {
+  /**
+   * 
+   * @param {Context!} context 
+   * @param {*} program 
+   */
+  constructor(context, program) {
+    this.program = program;
+    this.context = context;
+    const gl = context.gl;
+    this.matrixA_Loc = gl.getUniformLocation(program, 'matrixA');
+    this.matrixB_Loc = gl.getUniformLocation(program, 'matrixB');
+    this.aWidthLoc = gl.getUniformLocation(program, 'A_width');
+    this.aHeightLoc = gl.getUniformLocation(program, 'A_height');
+    this.bWidthLoc = gl.getUniformLocation(program, 'B_width');
+  }
+
+  /**
+   * Destroys the program and any associated WebGL resources.
+   */
+  destroy() {
+    if (this.program) {
+      this.context.gl.deleteProgram(this.program);
+      this.program = null;
+    }
+  }
+
+  /**
+   * 
+   * @param {LogicalMatrix} a 
+   * @param {LogicalMatrix} b 
+   * @param {LogicalMatrix} c 
+   */
+  execute(a, b, c) {
+    const gl = this.context.gl;
+    const fbo = this.context.fbo;
+    gl.useProgram(this.program);
+
+    gl.uniform1i(this.aWidthLoc, a.width);
+    gl.uniform1i(this.aHeightLoc, a.height);
+    gl.uniform1i(this.bWidthLoc, b.width);
+    // Note: b.height is equal to a.width, so we do not use a uniform for it.
+
+    // Bind the single, reusable FBO and attach the destination texture.
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, c.texture, 0);
+    gl.viewport(0, 0, c.width, c.height); // Ensure viewport matches texture size
+
+    // It's good practice to check FBO status after attaching a new texture.
+    const fboStatus = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+    if (fboStatus !== gl.FRAMEBUFFER_COMPLETE) {
+      throw new Error('Framebuffer not complete after attaching texture: ' + fboStatus);
+    }
+
+    // Activate textures and assign uniforms
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, a.texture);
+    gl.uniform1i(this.matrixA_Loc, 0); // texture unit 0
+
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, b.texture);
+    gl.uniform1i(this.matrixB_Loc, 1); // texture unit 1
+
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); // Draw the quad
+  }
+}

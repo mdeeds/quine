@@ -202,14 +202,34 @@ function processAndDisplayTokenization(text) {
   // For this demo, we train a new tokenizer on the input text.
   // A real application would load a pre-trained tokenizer.
   const tokenizer = new BPETokenizer();
-  const vocab_size = 30000;
+  const vocab_size = 4096;
   tokenizer.train(text, vocab_size);
 
   const encoded = tokenizer.encode(text);
   displayResults(tokenizer, encoded, text);
+
+  // Write the learned vocabulary to JSON and display it
+  const vocabJson = JSON.stringify(Object.fromEntries(tokenizer.vocab), null, 2);
+  displayVocabJson(vocabJson);
 }
 
 // --- UI Logic ---
+
+/**
+ * Displays the learned vocabulary JSON on the page.
+ * @param {string} vocabJson - The JSON string of the vocabulary.
+ */
+function displayVocabJson(vocabJson) {
+  const outputDiv = document.getElementById('vocabulary-json');
+  if (!outputDiv) return;
+  outputDiv.textContent = vocabJson;
+  Object.assign(outputDiv.style, {
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-all',
+  });
+
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const tokenizeButton = document.getElementById('tokenize-button');
   const textInput = document.getElementById('text-input');
@@ -224,6 +244,17 @@ document.addEventListener('DOMContentLoaded', () => {
     processAndDisplayTokenization(text);
   });
 
+  const copyJsonButton = document.getElementById('copy-json-button');
+  copyJsonButton?.addEventListener('click', async () => {
+    const vocabJsonElement = document.getElementById('vocabulary-json');
+    if (vocabJsonElement && navigator.clipboard) {
+      await navigator.clipboard.writeText(vocabJsonElement.textContent || '');
+      alert('Vocabulary JSON copied to clipboard.');
+    } else {
+      alert('Clipboard API not available or vocabulary JSON element not found. Make sure you are on a secure origin (HTTPS) or localhost.');
+    }
+  });
+
   const tokenizeProjectButton = document.getElementById('tokenize-project-button');
   tokenizeProjectButton?.addEventListener('click', async () => {
     const jsFiles = [
@@ -236,14 +267,20 @@ document.addEventListener('DOMContentLoaded', () => {
       'mm-fragment.glsl',
       'index.html',
       'token.html',
+      'vocabulary.json',
     ];
 
     let allJsContent = '';
     for (const file of jsFiles) {
       const response = await fetch(file);
       const content = await response.text();
-      allJsContent += content + '\n';
+      allJsContent += content;
     }
+
+    // Replace all \r\n with \n
+    allJsContent = allJsContent.replace(/\r\n/g, '\n') + '\n';
+    // Replace all \r with \n
+    allJsContent = allJsContent.replace(/\r/g, '\n') + '\n';
     processAndDisplayTokenization(allJsContent);
   });
 

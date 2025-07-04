@@ -257,9 +257,9 @@ class _MatrixMultiplyProgram {
 
   /**
    * 
-   * @param {LogicalMatrix} a 
-   * @param {LogicalMatrix} b 
-   * @param {LogicalMatrix} c 
+   * @param {LogicalMatrix!} a 
+   * @param {LogicalMatrix!} b 
+   * @param {LogicalMatrix!} c 
    */
   execute(a, b, c) {
     const gl = this.context.gl;

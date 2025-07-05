@@ -10,8 +10,8 @@ class Gpu {
     this.gl = gl;
     /** @type {Context} */
     this.context = new Context(gl, fbo);
-    /** @type {string | undefined} */
-    this.mm_fragment = undefined;
+    /** @type {_MatrixMultiplyProgram | null} */
+    this.mm_program = null;
     /** @type {WebGLBuffer | null} */
     this.quadPositionBuffer = null;
     /** @type {WebGLBuffer | null} */
@@ -54,6 +54,28 @@ class Gpu {
   }
 
   /**
+   * Cleans up all WebGL resources associated with this Gpu instance.
+   */
+  destroy() {
+    const gl = this.gl;
+    if (this.mm_program) {
+      this.mm_program.destroy();
+      this.mm_program = null;
+    }
+    if (this.quadPositionBuffer) {
+      gl.deleteBuffer(this.quadPositionBuffer);
+      this.quadPositionBuffer = null;
+    }
+    if (this.quadTexCoordBuffer) {
+      gl.deleteBuffer(this.quadTexCoordBuffer);
+      this.quadTexCoordBuffer = null;
+    }
+    if (this.context.fbo) {
+      gl.deleteFramebuffer(this.context.fbo);
+    }
+  }
+
+  /**
    * @param {LogicalMatrix!} a 
    * @param {LogicalMatrix!} b
    * @param {LogicalMatrix!} c 
@@ -65,8 +87,6 @@ class Gpu {
     this.mm_program.execute(a, b, c);
   }
 
-  /**
-  }
   /*********************************
    *      PRIVATE METHODS
    *********************************/
@@ -76,11 +96,11 @@ class Gpu {
    */
   async _initialize() {
     this._createQuadBuffers();
-    this.mm_fragment = await (await fetch('mm-fragment.glsl')).text();
-    if (!this.mm_fragment) {
+    const mm_fragment = await (await fetch('mm-fragment.glsl')).text();
+    if (!mm_fragment) {
       throw new Error('Gpu not initialized or fragment shader failed to load.');
     }
-    const program = this._createProgram(this.mm_fragment);
+    const program = this._createProgram(mm_fragment);
     if (!program) {
       throw new Error('Failed to create matrix multiply program.');
     }
@@ -232,9 +252,10 @@ class _MatrixMultiplyProgram {
   /**
    * 
    * @param {Context!} context 
-   * @param {*} program 
+   * @param {WebGLProgram!} program 
    */
   constructor(context, program) {
+    /** @type {WebGLProgram} */
     this.program = program;
     this.context = context;
     const gl = context.gl;
@@ -251,7 +272,6 @@ class _MatrixMultiplyProgram {
   destroy() {
     if (this.program) {
       this.context.gl.deleteProgram(this.program);
-      this.program = null;
     }
   }
 

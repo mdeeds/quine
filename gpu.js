@@ -12,6 +12,8 @@ class Gpu {
     this.context = new Context(gl, fbo);
     /** @type {_MatrixMultiplyProgram | null} */
     this.mm_program = null;
+    /** @type {_MatrixMultiplyAddBiasProgram | null} */
+    this.mmab_program = null;
     /** @type {WebGLBuffer | null} */
     this.quadPositionBuffer = null;
     /** @type {WebGLBuffer | null} */
@@ -87,24 +89,49 @@ class Gpu {
     this.mm_program.execute(a, b, c);
   }
 
+  /**
+   * Executes y = wx + b
+   * @param {LogicalMatrix!} x
+   * @param {LogicalMatrix!} w
+   * @param {LogicalMatrix!} b 
+   * @param {LogicalMatrix!} y 
+   */
+  executeMatrixMultiplyAddBias(x, w, b, y) {
+    if (!this.mmab_program) {
+      throw new Error('Matrix multiply and add bias program not initialized.');
+    }
+    this.mmab_program.execute(x, w, b, y);
+  }
+
   /*********************************
    *      PRIVATE METHODS
    *********************************/
 
   /**
+   * 
+   * @param {string} glslPath 
+   * @returns {Promise<WebGLProgram!>}
+   */
+  async _fetchProgram(glslPath) {
+    const code = await (await fetch(glslPath)).text();
+    if (!code) {
+      throw new Error(`Could not load fragment shader: ${glslPath}`);
+    }
+    const result = this._createProgram(code);
+    if (!result) {
+      throw new Error(`Failed to create shader: ${glslPath}`);
+    }
+    return result;
+  }
+  /**
    * @returns {Promise<void>}
    */
   async _initialize() {
     this._createQuadBuffers();
-    const mm_fragment = await (await fetch('mm-fragment.glsl')).text();
-    if (!mm_fragment) {
-      throw new Error('Gpu not initialized or fragment shader failed to load.');
-    }
-    const program = this._createProgram(mm_fragment);
-    if (!program) {
-      throw new Error('Failed to create matrix multiply program.');
-    }
-    this.mm_program = new _MatrixMultiplyProgram(this.context, program);
+    this.mm_program = new _MatrixMultiplyProgram(
+      this.context, await this._fetchProgram('mm-fragment.glsl'));
+    this.mmab_program = new _MatrixMultiplyAddBiasProgram(
+      this.context, await this._fetchProgram('mmab-fragment.glsl'));
     return;
   }
 
@@ -246,6 +273,78 @@ class Gpu {
     return finalResult;
   }
 
+}
+
+class _MatrixMultiplyAddBiasProgram {
+  /**
+   * 
+   * @param {Context!} context 
+   * @param {WebGLProgram!} program 
+   */
+  constructor(context, program) {
+    /** @type {WebGLProgram} */
+    this.program = program;
+    this.context = context;
+    const gl = context.gl;
+    this.matrixX_Loc = gl.getUniformLocation(program, 'matrixX');
+    this.matrixW_Loc = gl.getUniformLocation(program, 'matrixW');
+    this.matrixB_Loc = gl.getUniformLocation(program, 'matrixB');
+    this.xWidthLoc = gl.getUniformLocation(program, 'X_width');
+    this.xHeightLoc = gl.getUniformLocation(program, 'X_height');
+    this.wWidthLoc = gl.getUniformLocation(program, 'W_width');
+  }
+
+  /**
+   * Destroys the program and any associated WebGL resources.
+   */
+  destroy() {
+    if (this.program) {
+      this.context.gl.deleteProgram(this.program);
+    }
+  }
+
+  /**
+   * 
+   * @param {LogicalMatrix!} x 
+   * @param {LogicalMatrix!} w 
+   * @param {LogicalMatrix!} b 
+   * @param {LogicalMatrix!} y 
+   */
+  execute(x, w, b, y) {
+    const gl = this.context.gl;
+    const fbo = this.context.fbo;
+    gl.useProgram(this.program);
+
+    gl.uniform1i(this.xWidthLoc, x.width);
+    gl.uniform1i(this.xHeightLoc, x.height);
+    gl.uniform1i(this.wWidthLoc, w.width);
+
+    // Bind the single, reusable FBO and attach the destination texture.
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, y.texture, 0);
+    gl.viewport(0, 0, y.width, y.height); // Ensure viewport matches texture size
+
+    // It's good practice to check FBO status after attaching a new texture.
+    const fboStatus = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+    if (fboStatus !== gl.FRAMEBUFFER_COMPLETE) {
+      throw new Error('Framebuffer not complete after attaching texture: ' + fboStatus);
+    }
+
+    // Activate textures and assign uniforms
+    gl.activeTexture(gl.TEXTURE0); // x
+    gl.bindTexture(gl.TEXTURE_2D, x.texture);
+    gl.uniform1i(this.matrixX_Loc, 0);
+
+    gl.activeTexture(gl.TEXTURE1); // w
+    gl.bindTexture(gl.TEXTURE_2D, w.texture);
+    gl.uniform1i(this.matrixW_Loc, 1);
+
+    gl.activeTexture(gl.TEXTURE2); // b
+    gl.bindTexture(gl.TEXTURE_2D, b.texture);
+    gl.uniform1i(this.matrixB_Loc, 2);
+
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); // Draw the quad
+  }
 }
 
 class _MatrixMultiplyProgram {

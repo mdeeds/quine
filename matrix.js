@@ -6,8 +6,10 @@ class LogicalMatrix {
    * @param {Context!} context 
    * @param {number} width 
    * @param {number} height 
+   * @param {Float32Array?} data
    */
-  constructor(context, width, height, initialization = 'random') {
+  constructor(context, width, height,
+    initialization = 'random', data = null) {
     this.width = width;
     this.height = height;
     this.context = context;
@@ -23,6 +25,12 @@ class LogicalMatrix {
         const zeroData = new Float32Array(this.width * this.height);
         texture = this._createFloatTexture(zeroData);
         break;
+      case 'data':
+        if (!data) {
+          throw "Data must be specified when creating from data.";
+        }
+        texture = this._createFloatTexture(data);
+        break;
       default:
         throw 'Invalid initialization type'
     }
@@ -31,6 +39,7 @@ class LogicalMatrix {
     }
     this.texture = texture;
   }
+
 
   /**
    * 

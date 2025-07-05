@@ -267,7 +267,6 @@ document.addEventListener('DOMContentLoaded', () => {
       'mm-fragment.glsl',
       'index.html',
       'token.html',
-      'vocabulary.json',
     ];
 
     let allJsContent = '';

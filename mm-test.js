@@ -109,10 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
       console.error('An error occurred:', error);
       matrixC_div.textContent = `Error: ${error.message}`;
-    } finally {
-      if (gpu) {
-        gpu.destroy();
-      }
     }
   });
 });

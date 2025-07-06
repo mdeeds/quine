@@ -119,10 +119,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } catch (error) {
       throw error;
-    } finally {
-      if (gpu) {
-        gpu.destroy();
-      }
     }
   });
 });

@@ -8,16 +8,13 @@ class Gpu {
    */
   constructor(gl, fbo) {
     this.gl = gl;
-    /** @type {Context} */
-    this.context = new Context(gl, fbo);
-    /** @type {_MatrixMultiplyProgram | null} */
-    this.mm_program = null;
-    /** @type {_MatrixMultiplyAddBiasProgram | null} */
-    this.mmab_program = null;
-    /** @type {WebGLBuffer | null} */
-    this.quadPositionBuffer = null;
-    /** @type {WebGLBuffer | null} */
-    this.quadTexCoordBuffer = null;
+    /** @type {Context} */ this.context = new Context(gl, fbo);
+    /** @type {_MatrixMultiplyProgram | null} */ this.mm_program = null;
+    /** @type {_MatrixMultiplyT1Program | null} */ this.mmt1_program = null;
+    /** @type {_MatrixMultiplyT2Program | null} */ this.mmt2_program = null;
+    /** @type {_MatrixMultiplyAddBiasProgram | null} */ this.mmab_program = null;
+    /** @type {WebGLBuffer | null} */ this.quadPositionBuffer = null;
+    /** @type {WebGLBuffer | null} */ this.quadTexCoordBuffer = null;
   }
 
   /**
@@ -56,28 +53,6 @@ class Gpu {
   }
 
   /**
-   * Cleans up all WebGL resources associated with this Gpu instance.
-   */
-  destroy() {
-    const gl = this.gl;
-    if (this.mm_program) {
-      this.mm_program.destroy();
-      this.mm_program = null;
-    }
-    if (this.quadPositionBuffer) {
-      gl.deleteBuffer(this.quadPositionBuffer);
-      this.quadPositionBuffer = null;
-    }
-    if (this.quadTexCoordBuffer) {
-      gl.deleteBuffer(this.quadTexCoordBuffer);
-      this.quadTexCoordBuffer = null;
-    }
-    if (this.context.fbo) {
-      gl.deleteFramebuffer(this.context.fbo);
-    }
-  }
-
-  /**
    * @param {LogicalMatrix!} a 
    * @param {LogicalMatrix!} b
    * @param {LogicalMatrix!} c 
@@ -87,6 +62,30 @@ class Gpu {
       throw new Error('Matrix multiply program not initialized.');
     }
     this.mm_program.execute(a, b, c);
+  }
+
+  /**
+   * @param {LogicalMatrix!} a 
+   * @param {LogicalMatrix!} b
+   * @param {LogicalMatrix!} c 
+   */
+  executeMatrixMultiplyT1(a, b, c) {
+    if (!this.mmt1_program) {
+      throw new Error('Matrix multiply program not initialized.');
+    }
+    this.mmt1_program.execute(a, b, c);
+  }
+
+  /**
+   * @param {LogicalMatrix!} a 
+   * @param {LogicalMatrix!} b
+   * @param {LogicalMatrix!} c 
+   */
+  executeMatrixMultiplyT2(a, b, c) {
+    if (!this.mmt2_program) {
+      throw new Error('Matrix multiply program not initialized.');
+    }
+    this.mmt2_program.execute(a, b, c);
   }
 
   /**
@@ -130,6 +129,10 @@ class Gpu {
     this._createQuadBuffers();
     this.mm_program = new _MatrixMultiplyProgram(
       this.context, await this._fetchProgram('mm-fragment.glsl'));
+    this.mmt1_program = new _MatrixMultiplyProgram(
+      this.context, await this._fetchProgram('mmt1-fragment.glsl'));
+    this.mmt2_program = new _MatrixMultiplyProgram(
+      this.context, await this._fetchProgram('mmt2-fragment.glsl'));
     this.mmab_program = new _MatrixMultiplyAddBiasProgram(
       this.context, await this._fetchProgram('mmab-fragment.glsl'));
     return;
@@ -295,15 +298,6 @@ class _MatrixMultiplyAddBiasProgram {
   }
 
   /**
-   * Destroys the program and any associated WebGL resources.
-   */
-  destroy() {
-    if (this.program) {
-      this.context.gl.deleteProgram(this.program);
-    }
-  }
-
-  /**
    * 
    * @param {LogicalMatrix!} w 
    * @param {LogicalMatrix!} x 
@@ -330,6 +324,7 @@ class _MatrixMultiplyAddBiasProgram {
     const gl = this.context.gl;
     const fbo = this.context.fbo;
     gl.useProgram(this.program);
+    gl.disable(gl.BLEND);
 
     gl.uniform1i(this.wWidthLoc, w.width);
     gl.uniform1i(this.wHeightLoc, w.height);
@@ -381,31 +376,16 @@ class _MatrixMultiplyProgram {
     this.bWidthLoc = gl.getUniformLocation(program, 'B_width');
   }
 
-  /**
-   * Destroys the program and any associated WebGL resources.
-   */
-  destroy() {
-    if (this.program) {
-      this.context.gl.deleteProgram(this.program);
-    }
+  _preambleABC(a, b, c) {
+    const gl = this.context.gl;
+    gl.useProgram(this.program);
+    gl.disable(gl.BLEND);
+
   }
 
-  /**
-   * 
-   * @param {LogicalMatrix!} a 
-   * @param {LogicalMatrix!} b 
-   * @param {LogicalMatrix!} c 
-   */
-  execute(a, b, c) {
+  _postambleABC(a, b, c) {
     const gl = this.context.gl;
     const fbo = this.context.fbo;
-    gl.useProgram(this.program);
-
-    gl.uniform1i(this.aWidthLoc, a.width);
-    gl.uniform1i(this.aHeightLoc, a.height);
-    gl.uniform1i(this.bWidthLoc, b.width);
-    // Note: b.height is equal to a.width, so we do not use a uniform for it.
-
     // Bind the single, reusable FBO and attach the destination texture.
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, c.texture, 0);
@@ -425,6 +405,155 @@ class _MatrixMultiplyProgram {
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, b.texture);
     gl.uniform1i(this.matrixB_Loc, 1); // texture unit 1
+
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); // Draw the quad
+  }
+
+  /**
+   * 
+   * @param {LogicalMatrix!} a 
+   * @param {LogicalMatrix!} b 
+   * @param {LogicalMatrix!} c 
+   */
+  execute(a, b, c) {
+    const gl = this.context.gl;
+    this._preambleABC(a, b, c);
+
+    gl.uniform1i(this.aWidthLoc, a.width);
+    gl.uniform1i(this.aHeightLoc, a.height);
+    gl.uniform1i(this.bWidthLoc, b.width);
+
+    this._postambleABC(a, b, c);
+  }
+}
+
+class _MatrixMultiplyT1Program extends _MatrixMultiplyProgram {
+  /**
+   * 
+   * @param {Context!} context 
+   * @param {WebGLProgram!} program 
+   */
+  constructor(context, program) {
+    super(context, program);
+    /** @type {WebGLProgram} */
+    this.program = program;
+    this.context = context;
+    const gl = context.gl;
+    this.matrixA_Loc = gl.getUniformLocation(program, 'matrixA');
+    this.matrixB_Loc = gl.getUniformLocation(program, 'matrixB');
+    this.aWidthLoc = gl.getUniformLocation(program, 'A_width');
+    this.aHeightLoc = gl.getUniformLocation(program, 'A_height');
+    this.bWidthLoc = gl.getUniformLocation(program, 'B_width');
+  }
+
+  /**
+ * 
+ * @param {LogicalMatrix!} a 
+ * @param {LogicalMatrix!} b 
+ * @param {LogicalMatrix!} c 
+ */
+  execute(a, b, c) {
+    const gl = this.context.gl;
+    this._preambleABC(a, b, c);
+
+    gl.uniform1i(this.aWidthLoc, a.width);
+    gl.uniform1i(this.aHeightLoc, a.height);
+    gl.uniform1i(this.bWidthLoc, b.width);
+
+    this._postambleABC(a, b, c);
+  }
+}
+
+class _MatrixMultiplyT2Program extends _MatrixMultiplyProgram {
+  /**
+   * 
+   * @param {Context!} context 
+   * @param {WebGLProgram!} program 
+   */
+  constructor(context, program) {
+    super(context, program);
+    /** @type {WebGLProgram} */ this.program = program;
+    this.context = context;
+    const gl = context.gl;
+
+    this.matrixA_Loc = gl.getUniformLocation(program, 'matrixA');
+    this.matrixB_Loc = gl.getUniformLocation(program, 'matrixB');
+    this.aWidthLoc = gl.getUniformLocation(program, 'A_width');
+    this.aHeightLoc = gl.getUniformLocation(program, 'A_height');
+    this.bHeightLoc = gl.getUniformLocation(program, 'B_height');
+  }
+  /**
+   * 
+   * @param {LogicalMatrix!} a 
+   * @param {LogicalMatrix!} b 
+   * @param {LogicalMatrix!} c 
+   */
+  execute(a, b, c) {
+    const gl = this.context.gl;
+    this._preambleABC(a, b, c);
+
+    gl.uniform1i(this.aWidthLoc, a.width);
+    gl.uniform1i(this.aHeightLoc, a.height);
+    gl.uniform1i(this.bHeightLoc, b.height);
+
+    this._postambleABC(a, b, c);
+  }
+}
+
+class _MatrixUpdateProgram {
+  /**
+   * 
+   * @param {Context!} context 
+   * @param {WebGLProgram!} program 
+   */
+  constructor(context, program) {
+    /** @type {WebGLProgram} */
+    this.program = program;
+    this.context = context;
+    const gl = context.gl;
+    this.matrixY_Loc = gl.getUniformLocation(program, 'matrixY');
+    this.matrixA_Loc = gl.getUniformLocation(program, 'matrixA');
+    this.alpha_Loc = gl.getUniformLocation(program, 'alpha');
+    this.widthLoc = gl.getUniformLocation(program, 'width');
+    this.heightLoc = gl.getUniformLocation(program, 'height');
+  }
+
+  /**
+   * Implements Y = Y + alpha * A
+   * @param {LogicalMatrix!} a 
+   * @param {number} alpha
+   * @param {LogicalMatrix!} y 
+   */
+  execute(a, alpha, y) {
+    if (y.width !== a.width || y.height !== a.height) {
+      throw new Error(`Matrix dimensions mismatch: Y (${y.width}x${y.height}) and A (${a.width}x${a.height}) must be the same size.`);
+    }
+
+    const gl = this.context.gl;
+    const fbo = this.context.fbo;
+    gl.useProgram(this.program);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE);
+
+    gl.uniform1i(this.widthLoc, a.width);
+    gl.uniform1i(this.heightLoc, a.height);
+    gl.uniform1f(this.alpha_Loc, alpha);
+
+    // Bind the single, reusable FBO and attach the destination texture.
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, y.texture, 0);
+    gl.viewport(0, 0, a.width, a.height); // Ensure viewport matches texture size
+
+    // It's good practice to check FBO status after attaching a new texture.
+    const fboStatus = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+    if (fboStatus !== gl.FRAMEBUFFER_COMPLETE) {
+      throw new Error('Framebuffer not complete after attaching texture: ' + fboStatus);
+    }
+
+    // Activate textures and assign uniforms
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, a.texture);
+    gl.uniform1i(this.matrixA_Loc, 0); // texture unit 0
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); // Draw the quad
   }

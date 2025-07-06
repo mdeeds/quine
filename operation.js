@@ -78,7 +78,7 @@ class MatrixMultiplyOperation extends Operation {
    * @param {number} learningRate 
    */
   addGradient(learningRate) {
-    this.gpu.executeMatrixAdd(this.dw, learningRate, this.w);
+    this.gpu.executeMatrixUpdate(this.dw, learningRate, this.w);
   }
 }
 

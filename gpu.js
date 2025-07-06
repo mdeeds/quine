@@ -10,6 +10,7 @@ class Gpu {
     this.gl = gl;
     /** @type {Context} */ this.context = new Context(gl, fbo);
     /** @type {_MatrixMultiplyProgram | null} */ this.mm_program = null;
+    /** @type {_MatrixUpdateProgram | null} */ this.mmu_program = null;
     /** @type {_MatrixMultiplyT1Program | null} */ this.mmt1_program = null;
     /** @type {_MatrixMultiplyT2Program | null} */ this.mmt2_program = null;
     /** @type {_MatrixMultiplyAddBiasProgram | null} */ this.mmab_program = null;
@@ -62,6 +63,18 @@ class Gpu {
       throw new Error('Matrix multiply program not initialized.');
     }
     this.mm_program.execute(a, b, c);
+  }
+
+  /**
+   * @param {LogicalMatrix!} a 
+   * @param {number} alpha
+   * @param {LogicalMatrix!} y 
+   */
+  executeMatrixUpdate(a, alpha, y) {
+    if (!this.mmu_program) {
+      throw new Error('Matrix multiply program not initialized.');
+    }
+    this.mmu_program.execute(a, alpha, y);
   }
 
   /**
@@ -129,9 +142,11 @@ class Gpu {
     this._createQuadBuffers();
     this.mm_program = new _MatrixMultiplyProgram(
       this.context, await this._fetchProgram('mm-fragment.glsl'));
-    this.mmt1_program = new _MatrixMultiplyProgram(
+    this.mmu_program = new _MatrixUpdateProgram(
+      this.context, await this._fetchProgram('mscale-fragment.glsl'));
+    this.mmt1_program = new _MatrixMultiplyT1Program(
       this.context, await this._fetchProgram('mmt1-fragment.glsl'));
-    this.mmt2_program = new _MatrixMultiplyProgram(
+    this.mmt2_program = new _MatrixMultiplyT2Program(
       this.context, await this._fetchProgram('mmt2-fragment.glsl'));
     this.mmab_program = new _MatrixMultiplyAddBiasProgram(
       this.context, await this._fetchProgram('mmab-fragment.glsl'));

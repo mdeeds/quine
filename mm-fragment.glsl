@@ -14,13 +14,15 @@ uniform int B_width;
 
 out vec4 fragColor; // Output color (the computed matrix element)
 
+// Implements Matrix multipliaction
+// C = A B
 void main() {
     // Determine the current row and column of the output matrix C
     // texCoord.x maps to column, texCoord.y maps to row
     // Output matrix C has dimensions B_width x A_height
     // Subtract 0.5 here for the half-texel offset
-    int colC = int(texCoord.x * float(B_width) - 0.5); 
     int rowC = int(texCoord.y * float(A_height) - 0.5);
+    int colC = int(texCoord.x * float(B_width) - 0.5); 
 
     float sum = 0.0;
     int B_height = A_width;

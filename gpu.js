@@ -289,9 +289,9 @@ class _MatrixMultiplyAddBiasProgram {
     this.matrixX_Loc = gl.getUniformLocation(program, 'matrixX');
     this.matrixW_Loc = gl.getUniformLocation(program, 'matrixW');
     this.matrixB_Loc = gl.getUniformLocation(program, 'matrixB');
-    this.xWidthLoc = gl.getUniformLocation(program, 'X_width');
-    this.xHeightLoc = gl.getUniformLocation(program, 'X_height');
     this.wWidthLoc = gl.getUniformLocation(program, 'W_width');
+    this.wHeightLoc = gl.getUniformLocation(program, 'W_height');
+    this.xWidthLoc = gl.getUniformLocation(program, 'X_width');
   }
 
   /**
@@ -305,19 +305,35 @@ class _MatrixMultiplyAddBiasProgram {
 
   /**
    * 
-   * @param {LogicalMatrix!} x 
    * @param {LogicalMatrix!} w 
+   * @param {LogicalMatrix!} x 
    * @param {LogicalMatrix!} b 
    * @param {LogicalMatrix!} y 
    */
-  execute(x, w, b, y) {
+  execute(w, x, b, y) {
+    // y = wx + b
+    if (w.width !== x.height) {
+      throw new Error(`Matrix dimension mismatch: W's width (${w.width}) must equal X's height (${x.height}).`);
+    }
+    if (w.height != y.height) {
+      throw new Error(`Matrix dimension mismatch: W's height (${w.height}) must equal Y's height (${y.height}).`);
+    }
+    if (x.width != y.width) {
+      throw new Error(`Matrix dimension mismatch: X's width (${x.width}) must equal Y's width (${y.width}).`);
+    }
+    if (b.height != 1) {
+      throw new Error(`Matrix dimension mismatch: B's height (${b.height}) must equal 1.`);
+    }
+    if (b.width != y.width) {
+      throw new Error(`Matrix dimension mismatch: B's width (${b.width}) must equal Y's width (${y.width}).`);
+    }
     const gl = this.context.gl;
     const fbo = this.context.fbo;
     gl.useProgram(this.program);
 
-    gl.uniform1i(this.xWidthLoc, x.width);
-    gl.uniform1i(this.xHeightLoc, x.height);
     gl.uniform1i(this.wWidthLoc, w.width);
+    gl.uniform1i(this.wHeightLoc, w.height);
+    gl.uniform1i(this.xWidthLoc, x.width);
 
     // Bind the single, reusable FBO and attach the destination texture.
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
@@ -331,13 +347,13 @@ class _MatrixMultiplyAddBiasProgram {
     }
 
     // Activate textures and assign uniforms
-    gl.activeTexture(gl.TEXTURE0); // x
-    gl.bindTexture(gl.TEXTURE_2D, x.texture);
-    gl.uniform1i(this.matrixX_Loc, 0);
-
-    gl.activeTexture(gl.TEXTURE1); // w
+    gl.activeTexture(gl.TEXTURE0); // w
     gl.bindTexture(gl.TEXTURE_2D, w.texture);
-    gl.uniform1i(this.matrixW_Loc, 1);
+    gl.uniform1i(this.matrixW_Loc, 0);
+
+    gl.activeTexture(gl.TEXTURE1); // x
+    gl.bindTexture(gl.TEXTURE_2D, x.texture);
+    gl.uniform1i(this.matrixX_Loc, 1);
 
     gl.activeTexture(gl.TEXTURE2); // b
     gl.bindTexture(gl.TEXTURE_2D, b.texture);

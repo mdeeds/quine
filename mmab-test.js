@@ -91,9 +91,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const matrixB_info = parseMatrix(matrixB_textarea.value);
 
 
-      // For y = xw + b, x's width must match w's height.
-      if (matrixX_info.width !== matrixW_info.height) {
-        throw new Error(`Matrix dimension mismatch: X's width (${matrixX_info.width}) must equal W's height (${matrixW_info.height}).`);
+      // For y = wx + b, w's width must match x's height.
+      if (matrixW_info.width !== matrixX_info.height) {
+        throw new Error(`Matrix dimension mismatch: W's width (${matrixX_info.width}) must equal X's height (${matrixW_info.height}).`);
       }
 
       gpu = await Gpu.create();
@@ -104,9 +104,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const b = new LogicalMatrix(
         gpu.context, matrixB_info.width, matrixB_info.height, 'data', matrixB_info.data);
 
-      const y = new LogicalMatrix(gpu.context, w.width, x.height, 'zero');
+      const y = new LogicalMatrix(gpu.context, x.width, w.height, 'zero');
 
-      gpu.executeMatrixMultiplyAddBias(x, w, b, y);
+      gpu.executeMatrixMultiplyAddBias(w, x, b, y);
       const resultData = gpu.readPixels(y);
 
       matrixY_div.textContent = formatMatrix(resultData, y.width, y.height);

@@ -10,7 +10,8 @@ class Gpu {
     this.gl = gl;
     /** @type {Context} */ this.context = new Context(gl, fbo);
     /** @type {_MatrixMultiplyProgram | null} */ this.mm_program = null;
-    /** @type {_MatrixUpdateProgram | null} */ this.mmu_program = null;
+    /** @type {_MatrixUpdateProgram | null} */ this.mu_program = null;
+    /** @type {_MatrixUpdateProgram | null} */ this.matanu_program = null;
     /** @type {_MatrixMultiplyT1Program | null} */ this.mmt1_program = null;
     /** @type {_MatrixMultiplyT2Program | null} */ this.mmt2_program = null;
     /** @type {_MatrixMultiplyAddBiasProgram | null} */ this.mmab_program = null;
@@ -71,10 +72,23 @@ class Gpu {
    * @param {LogicalMatrix!} y 
    */
   executeMatrixUpdate(a, alpha, y) {
-    if (!this.mmu_program) {
+    if (!this.mu_program) {
       throw new Error('Matrix multiply program not initialized.');
     }
-    this.mmu_program.execute(a, alpha, y);
+    this.mu_program.execute(a, alpha, y);
+  }
+
+  /**
+   * 
+   * @param {LogicalMatrix} a 
+   * @param {number} alpha 
+   * @param {LogicalMatrix} y 
+   */
+  executeMatrixAtanUpdate(a, alpha, y) {
+    if (!this.matanu_program) {
+      throw new Error('Matrix multiply program not initialized.');
+    }
+    this.matanu_program.execute(a, alpha, y);
   }
 
   /**
@@ -115,6 +129,13 @@ class Gpu {
     this.mmab_program.execute(x, w, b, y);
   }
 
+  executeLoss(expected, actual, dLoss) {
+    if (!this.mdl_program) {
+      throw new Error('Loss program is not initialized');
+    }
+    this.mdl_program.execute(expected, actual, dLoss);
+  }
+
   /*********************************
    *      PRIVATE METHODS
    *********************************/
@@ -142,14 +163,18 @@ class Gpu {
     this._createQuadBuffers();
     this.mm_program = new _MatrixMultiplyProgram(
       this.context, await this._fetchProgram('mm-fragment.glsl'));
-    this.mmu_program = new _MatrixUpdateProgram(
+    this.mu_program = new _MatrixUpdateProgram(
       this.context, await this._fetchProgram('mscale-fragment.glsl'));
+    this.matanu_program = new _MatrixUpdateProgram(
+      this.context, await this._fetchProgram('matanscale-fragment.glsl'));
     this.mmt1_program = new _MatrixMultiplyT1Program(
       this.context, await this._fetchProgram('mmt1-fragment.glsl'));
     this.mmt2_program = new _MatrixMultiplyT2Program(
       this.context, await this._fetchProgram('mmt2-fragment.glsl'));
     this.mmab_program = new _MatrixMultiplyAddBiasProgram(
       this.context, await this._fetchProgram('mmab-fragment.glsl'));
+    this.mdl_program = new _MatrixLossProgram(
+      this.context, await this._fetchProgram('mdl-fragment.glsl'));
     return;
   }
 
@@ -310,6 +335,10 @@ class _MatrixMultiplyAddBiasProgram {
     this.wWidthLoc = gl.getUniformLocation(program, 'W_width');
     this.wHeightLoc = gl.getUniformLocation(program, 'W_height');
     this.xWidthLoc = gl.getUniformLocation(program, 'X_width');
+    if (!this.matrixX_Loc || !this.matrixW_Loc || !this.matrixB_Loc ||
+      !this.wWidthLoc || !this.wHeightLoc || !this.xWidthLoc) {
+      throw new Error("Missing uniform location in matrix multiply add bias program.");
+    }
   }
 
   /**
@@ -373,7 +402,7 @@ class _MatrixMultiplyAddBiasProgram {
   }
 }
 
-class _MatrixMultiplyProgram {
+class _ABCProgram {
   /**
    * 
    * @param {Context!} context 
@@ -384,21 +413,16 @@ class _MatrixMultiplyProgram {
     this.program = program;
     this.context = context;
     const gl = context.gl;
-    this.matrixA_Loc = gl.getUniformLocation(program, 'matrixA');
-    this.matrixB_Loc = gl.getUniformLocation(program, 'matrixB');
-    this.aWidthLoc = gl.getUniformLocation(program, 'A_width');
-    this.aHeightLoc = gl.getUniformLocation(program, 'A_height');
-    this.bWidthLoc = gl.getUniformLocation(program, 'B_width');
   }
 
-  _preambleABC(a, b, c) {
+  _preambleABC() {
     const gl = this.context.gl;
     gl.useProgram(this.program);
     gl.disable(gl.BLEND);
 
   }
 
-  _postambleABC(a, b, c) {
+  _postambleABC(a, matrixA_Loc, b, matrixB_Loc, c) {
     const gl = this.context.gl;
     const fbo = this.context.fbo;
     // Bind the single, reusable FBO and attach the destination texture.
@@ -415,15 +439,31 @@ class _MatrixMultiplyProgram {
     // Activate textures and assign uniforms
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, a.texture);
-    gl.uniform1i(this.matrixA_Loc, 0); // texture unit 0
+    gl.uniform1i(matrixA_Loc, 0); // texture unit 0
 
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, b.texture);
-    gl.uniform1i(this.matrixB_Loc, 1); // texture unit 1
+    gl.uniform1i(matrixB_Loc, 1); // texture unit 1
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); // Draw the quad
   }
+}
 
+class _MatrixMultiplyProgram extends _ABCProgram {
+  /**
+   * 
+   * @param {Context!} context 
+   * @param {WebGLProgram!} program 
+   */
+  constructor(context, program) {
+    super(context, program);
+    const gl = context.gl;
+    this.matrixA_Loc = gl.getUniformLocation(program, 'matrixA');
+    this.matrixB_Loc = gl.getUniformLocation(program, 'matrixB');
+    this.aWidthLoc = gl.getUniformLocation(program, 'A_width');
+    this.aHeightLoc = gl.getUniformLocation(program, 'A_height');
+    this.bWidthLoc = gl.getUniformLocation(program, 'B_width');
+  }
   /**
    * 
    * @param {LogicalMatrix!} a 
@@ -432,17 +472,17 @@ class _MatrixMultiplyProgram {
    */
   execute(a, b, c) {
     const gl = this.context.gl;
-    this._preambleABC(a, b, c);
+    this._preambleABC();
 
     gl.uniform1i(this.aWidthLoc, a.width);
     gl.uniform1i(this.aHeightLoc, a.height);
     gl.uniform1i(this.bWidthLoc, b.width);
 
-    this._postambleABC(a, b, c);
+    this._postambleABC(a, this.matrixA_Loc, b, this.matrixB_Loc, c);
   }
 }
 
-class _MatrixMultiplyT1Program extends _MatrixMultiplyProgram {
+class _MatrixMultiplyT1Program extends _ABCProgram {
   /**
    * 
    * @param {Context!} context 
@@ -469,13 +509,13 @@ class _MatrixMultiplyT1Program extends _MatrixMultiplyProgram {
  */
   execute(a, b, c) {
     const gl = this.context.gl;
-    this._preambleABC(a, b, c);
+    this._preambleABC();
 
     gl.uniform1i(this.aWidthLoc, a.width);
     gl.uniform1i(this.aHeightLoc, a.height);
     gl.uniform1i(this.bWidthLoc, b.width);
 
-    this._postambleABC(a, b, c);
+    this._postambleABC(a, this.matrixA_Loc, b, this.matrixB_Loc, c);
   }
 }
 
@@ -505,13 +545,45 @@ class _MatrixMultiplyT2Program extends _MatrixMultiplyProgram {
    */
   execute(a, b, c) {
     const gl = this.context.gl;
-    this._preambleABC(a, b, c);
+    this._preambleABC();
 
     gl.uniform1i(this.aWidthLoc, a.width);
     gl.uniform1i(this.aHeightLoc, a.height);
     gl.uniform1i(this.bHeightLoc, b.height);
 
-    this._postambleABC(a, b, c);
+    this._postambleABC(a, this.matrixA_Loc, b, this.matrixB_Loc, c);
+  }
+}
+
+
+class _MatrixLossProgram extends _ABCProgram {
+  /**
+   * 
+   * @param {Context!} context 
+   * @param {WebGLProgram!} program 
+   */
+  constructor(context, program) {
+    super(context, program);
+    /** @type {WebGLProgram} */ this.program = program;
+    this.context = context;
+    const gl = context.gl;
+
+    this.matrixExpected_Loc = gl.getUniformLocation(program, 'matrixExpected');
+    this.matrixActual_Loc = gl.getUniformLocation(program, 'matrixActual');
+    if (!this.matrixExpected_Loc || !this.matrixActual_Loc) {
+      throw new Error("Missing uniform location in loss program.");
+    }
+  }
+  /**
+   * 
+   * @param {LogicalMatrix!} expected
+   * @param {LogicalMatrix!} actual
+   * @param {LogicalMatrix!} loss
+   */
+  execute(expected, actual, loss) {
+    const gl = this.context.gl;
+    this._preambleABC();
+    this._postambleABC(expected, this.matrixExpected_Loc, actual, this.matrixActual_Loc, loss);
   }
 }
 

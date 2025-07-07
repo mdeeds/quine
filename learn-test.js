@@ -1,12 +1,15 @@
 // @ts-check
 
 document.addEventListener('DOMContentLoaded', () => {
-  const forwardButton = document.getElementById('forward-button');
   const matrixW_textarea = /** @type {HTMLTextAreaElement} */ (document.getElementById('matrix-w'));
   const matrixX_textarea = /** @type {HTMLTextAreaElement} */ (document.getElementById('matrix-x'));
   const matrixY_textarea = /** @type {HTMLTextAreaElement} */ (document.getElementById('matrix-y'));
+  const forwardButton = document.getElementById('forward-button');
+  const backwardButton = document.getElementById('backward-button');
+  const updateButton = document.getElementById('update-button');
 
-  if (!forwardButton || !matrixW_textarea || !matrixX_textarea || !matrixY_textarea) {
+  if (!forwardButton || !backwardButton || !updateButton ||
+    !matrixW_textarea || !matrixX_textarea || !matrixY_textarea) {
     console.error('Required HTML elements not found.');
     return;
   }
@@ -140,5 +143,90 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultData = gpu.readPixels(y);
     const resultStr = formatMatrix(resultData, y.width, y.height);
     console.log(resultStr);
+  });
+
+  function logMatrix(gpu, matrix, name) {
+    const resultData = gpu.readPixels(matrix);
+    const resultStr = formatMatrix(resultData, matrix.width, matrix.height);
+    console.log(`${name}: ` + resultStr);
+
+  }
+
+  backwardButton.addEventListener('click', async () => {
+    const matrixX_info = parseMatrix(matrixX_textarea.value);
+    if (!matrixX_info) {
+      throw new Error("Invalid matrix X");
+    }
+    const matrixY_info = parseMatrix(matrixY_textarea.value);
+    if (!matrixY_info) {
+      throw new Error("Invalid matrix Y");
+    }
+    let matrixW_info = parseMatrix(matrixW_textarea.value);
+    if (!matrixW_info) {
+      matrixW_info = { data: null, width: matrixX_info.height, height: matrixY_info.height };
+    }
+
+    const gpu = await Gpu.create();
+
+    const w = createFromDataOrRandom(gpu, matrixW_info, matrixW_textarea);
+    const x = createFromDataOrRandom(gpu, matrixX_info, matrixX_textarea);
+    const y_expected = createFromDataOrRandom(gpu, matrixY_info, matrixY_textarea);
+
+    const dw = createZeroLike(gpu.context, w);
+    const dx = createZeroLike(gpu.context, x);
+    const dy = createZeroLike(gpu.context, y_expected);
+    const y_actual = createZeroLike(gpu.context, y_expected);
+
+    const mmo = new MatrixMultiplyOperation(gpu, w, dw, x, dx, y_actual, dy);
+    mmo.forward();
+    logMatrix(gpu, y_actual, "actual");
+    logMatrix(gpu, y_expected, "expected");
+
+    gpu.executeLoss(y_expected, y_actual, dy);
+    logMatrix(gpu, dy, "dY");
+
+    mmo.backward();
+    logMatrix(gpu, dw, "dW")
+  });
+
+  updateButton.addEventListener('click', async () => {
+    const matrixX_info = parseMatrix(matrixX_textarea.value);
+    if (!matrixX_info) {
+      throw new Error("Invalid matrix X");
+    }
+    const matrixY_info = parseMatrix(matrixY_textarea.value);
+    if (!matrixY_info) {
+      throw new Error("Invalid matrix Y");
+    }
+    let matrixW_info = parseMatrix(matrixW_textarea.value);
+    if (!matrixW_info) {
+      matrixW_info = { data: null, width: matrixX_info.height, height: matrixY_info.height };
+    }
+
+    const gpu = await Gpu.create();
+
+    const w = createFromDataOrRandom(gpu, matrixW_info, matrixW_textarea);
+    const x = createFromDataOrRandom(gpu, matrixX_info, matrixX_textarea);
+    const y_expected = createFromDataOrRandom(gpu, matrixY_info, matrixY_textarea);
+
+    const dw = createZeroLike(gpu.context, w);
+    const dx = createZeroLike(gpu.context, x);
+    const dy = createZeroLike(gpu.context, y_expected);
+    const y_actual = createZeroLike(gpu.context, y_expected);
+
+    const mmo = new MatrixMultiplyOperation(gpu, w, dw, x, dx, y_actual, dy);
+    mmo.forward();
+    logMatrix(gpu, y_actual, "actual");
+    logMatrix(gpu, y_expected, "expected");
+
+    gpu.executeLoss(y_expected, y_actual, dy);
+    logMatrix(gpu, dy, "dY");
+
+    mmo.backward();
+    logMatrix(gpu, dw, "dW")
+
+    gpu.executeMatrixAtanUpdate(dw, 0.05, w);
+    logMatrix(gpu, w, "w")
+    updateText(gpu, w, matrixW_textarea);
   });
 });

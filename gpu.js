@@ -1,6 +1,9 @@
 // @ts-check
 
-class Gpu {
+import { Context } from './context.js';
+import { LogicalMatrix } from './matrix.js';
+
+export class Gpu {
   /**
    * Do not use this constructor. Please use the async create method instead.
    * @param {WebGL2RenderingContext} gl 

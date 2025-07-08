@@ -1,6 +1,8 @@
 // @ts-check
 
-class LogicalMatrix {
+import { Context } from './context.js';
+
+export class LogicalMatrix {
   /**
    * 
    * @param {Context!} context 

@@ -1,5 +1,9 @@
 // @ts-check
 
+import { Gpu } from './gpu.js';
+import { LogicalMatrix } from './matrix.js';
+import { MatrixMultiplyOperation } from './operation.js';
+
 document.addEventListener('DOMContentLoaded', () => {
   const matrixW_textarea = /** @type {HTMLTextAreaElement} */ (document.getElementById('matrix-w'));
   const matrixX_textarea = /** @type {HTMLTextAreaElement} */ (document.getElementById('matrix-x'));

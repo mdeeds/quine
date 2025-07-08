@@ -1,5 +1,8 @@
 // @ts-check
 
+import { Gpu } from './gpu.js';
+import { LogicalMatrix } from './matrix.js';
+
 /**
  * An "Operation" supports both forward and backward passes.  Internally, it has inputs and outputs.
  * These are all instances of LogicalMatrix.  Additionally, it has matricies that are the gradients
@@ -42,7 +45,7 @@ class Operation {
  * When `backward` is called, the gradients in `dy` are propagated to `dw`
  * based on the current activations in `x`
  */
-class MatrixMultiplyOperation extends Operation {
+export class MatrixMultiplyOperation extends Operation {
   constructor(gpu, w, dw, x, dx, y, dy) {
     super();
     this.gpu = gpu;
@@ -82,7 +85,7 @@ class MatrixMultiplyOperation extends Operation {
   }
 }
 
-class FullyConnectedOperation extends Operation {
+export class FullyConnectedOperation extends Operation {
   /**
    * Creates a fully connected layer: 
    * y = xw + b
@@ -110,7 +113,7 @@ class FullyConnectedOperation extends Operation {
   }
 
   forward() {
-    this.gpu.executeMatrixMultiplyAndAddBias(this.x, this.w, this.b, this.y);
+    this.gpu.executeMatrixMultiplyAddBias(this.x, this.w, this.b, this.y);
   }
 
   backward() {

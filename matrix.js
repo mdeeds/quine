@@ -42,6 +42,20 @@ export class LogicalMatrix {
     this.texture = texture;
   }
 
+  /**
+   * Updates the texture with new data from a Float32Array.
+   * @param {Float32Array!} data 
+   */
+  setValues(data) {
+    if (data.length !== this.width * this.height) {
+      throw new Error(`Data size (${data.length}) does not match matrix dimensions (${this.width}x${this.height}).`);
+    }
+    const gl = this.context.gl;
+    gl.bindTexture(gl.TEXTURE_2D, this.texture);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, this.width, this.height, gl.RED, gl.FLOAT, data);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+  }
+
 
   /**
    * 

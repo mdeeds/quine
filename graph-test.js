@@ -42,11 +42,11 @@ async function init() {
     console.log(component.getDescription());
   }
 
-  const Expected = graph.createNode('Expeted',
+  const expected = graph.createNode('Expeted',
     { width: batchSize, height: outputSize, nodeType: 'output' });
-  Expected.value.setValues(new Float32Array([0, 1, 1, 0]));
+  expected.value.setValues(new Float32Array([0, 1, 1, 0]));
 
-  // graph.addLoss({ actual: Y, expected: Expected });
+  graph.loss({ actual: Y, expected: expected });
 
 }
 

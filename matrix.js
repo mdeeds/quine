@@ -43,6 +43,14 @@ export class LogicalMatrix {
   }
 
   /**
+   * @param {LogicalMatrix!} other
+   * @returns {boolean}
+   */
+  sameSize(other) {
+    return this.width === other.width && this.height === other.height;
+  }
+
+  /**
    * Updates the texture with new data from a Float32Array.
    * @param {Float32Array!} data 
    */

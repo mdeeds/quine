@@ -1,11 +1,14 @@
 // @ts-check
 
 import { Gpu } from './gpu.js';
+import { LogicalMatrix } from './matrix.js';
+import { FullyConnectedOperation } from './operation.js';
 
 /**
  * @typedef {object} MatrixSpec
  * @property {number} width
  * @property {number} height
+ * @property {string!} nodeType
  */
 
 /**
@@ -26,8 +29,12 @@ export class Graph {
   constructor(gpu) {
     this.gpu = gpu;
     this.components = []; /** @type {Array<ConnectionOrNode>} */
+    this.allNodes = new Set();  /** @type {Set<Node>} */
+    this.allConnections = new Set();  /** @type {Set<Connection>} */
 
     this.dependencies = [];  /** @type {Array<Dependency>} */
+
+    this.lossPairs = [];  /** @type {Array<{actual: Node, expected: Node}>} */
   }
 
   /**
@@ -37,18 +44,35 @@ export class Graph {
    * @returns {Node!}
    */
   createNode(name, spec) {
-    const node = new Node(name, spec);
+    const node = new Node(this.gpu, name, spec);
     this.components.push(node);
+    this.allNodes.add(node);
     return node;
   }
 
-  multiplyAdd(w, x, b, y) {
-    const connection = new MultiplyAdd(w, x, b, y);
+  /**
+   * 
+   * @param {Node!} x 
+   * @param {Node!} w 
+   * @param {Node!} b 
+   * @param {Node!} y 
+   */
+  multiplyAdd(x, w, b, y) {
+    const connection = new MultiplyAdd(this.gpu, x, w, b, y);
     this.components.push(connection);
-    this.dependencies.push({ source: w, target: connection });
+    this.allConnections.add(connection);
     this.dependencies.push({ source: x, target: connection });
+    this.dependencies.push({ source: w, target: connection });
     this.dependencies.push({ source: b, target: connection });
     this.dependencies.push({ source: connection, target: y });
+  }
+
+  /**
+   * 
+   * @param {object} spec 
+   */
+  loss({ actual, expected }) {
+    this.lossPairs.push({ actual, expected });
   }
 
   /**
@@ -95,19 +119,85 @@ export class Graph {
     }
     return result;
   }
+
+  /**
+   * Executes the `forward` function on all connections in forward order
+   */
+  forward() {
+    const components = this.getComponentsInBuildOrder();
+    for (const component of components) {
+      // Only components that are instances of Connection have a forward method.
+      // Nodes do not have a forward method.
+      if (component['forward']) {
+        component['forward'](); // Call the forward method if it exists
+      }
+    }
+  }
+
+  /**
+   * This will clear all gradients from nodes unless they have isOutput set.
+   * Before calling this function, you should set the gradients on all of the output nodes.
+   * Gradients are applied to all nodes except for inputs and outputs.
+   * @param {number!} learningRate 
+   */
+  backwardAndAddGradient(learningRate) {
+    const components = this.getComponentsInBuildOrder().reverse();
+
+    // Clear gradients on all non-output nodes.
+    for (const component of components) {
+      if (this.allNodes.has(component)) {
+        // Nodes have a `gradient`.  Set these to zero.
+        const node = component;  /** @type {Node} */
+        if (node.spec.nodeType != 'output') {
+          const matrix = node.gradient;  /** @type {LogicalMatrix} */
+          const fbo = this.gpu.context.fbo;
+          const gl = this.gpu.gl;
+          gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+          gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, matrix.texture, 0);
+          gl.clearColor(0.0, 0.0, 0.0, 0.0);
+          gl.viewport(0, 0, matrix.width, matrix.height);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        }
+      }
+    }
+    // Compute and apply the gradients
+    for (const component of components) {
+      if (this.allConnections.has(component)) {
+        const connection = component;  /** @type {Connection} */
+        connection.backward(); // Call the backward method if it exists
+      } else if (component['addGradient']) {
+        const node = component;  /** @type {Node} */
+        if (node.spec.nodeType === 'train') {
+          node.addGradient(learningRate);
+        }
+      }
+    }
+  }
 }
 
 export class Node {
   /**
    * 
+   * @param {Gpu!} gpu
    * @param {string!} name
    * @param {MatrixSpec!} spec 
    */
-  constructor(name, spec) {
+  constructor(gpu, name, spec) {
+    this.gpu = gpu;
     this.name = name;
     this.spec = spec;
-    this.value = null;
-    this.gradient = null;
+    // At some point, we might want to think about pooling these textures.
+    this.value = new LogicalMatrix(gpu.context, spec.width, spec.height, 'zero');
+    this.gradient = new LogicalMatrix(gpu.context, spec.width, spec.height, 'zero');
+  }
+
+  /**
+   * 
+   * @param {number!} learningRate
+   */
+  addGradient(learningRate) {
+    this.gpu.executeMatrixUpdate(this.gradient, learningRate, this.value);
   }
 
   /**
@@ -119,22 +209,39 @@ export class Node {
 }
 
 export class Connection {
-  constructor() { };
+  constructor(operation) {
+    this.operation = operation;
+  };
   getDescription() {
     throw new Error("Implemented in child class.");
+  }
+
+  forward() {
+    this.operation.forward();
+  }
+
+  backward() {
+    this.operation.backward();
+  }
+
+  addGradient(learningRate) {
+    this.operation.addGradient(learningRate);
   }
 }
 
 export class MultiplyAdd extends Connection {
   /**
    * Arranges y = wx + b in the graph.
-   * @param {Node!} w 
+   * @param {Gpu!} gpu
    * @param {Node!} x 
+   * @param {Node!} w 
    * @param {Node!} b 
    * @param {Node!} y 
    */
-  constructor(w, x, b, y) {
-    super();
+  constructor(gpu, x, w, b, y) {
+    super(new FullyConnectedOperation(gpu,
+      x.value, w.value, b.value, y.value,
+      x.gradient, w.gradient, b.gradient, y.gradient));
     this.w = w;
     this.x = x;
     this.b = b;

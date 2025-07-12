@@ -17,20 +17,20 @@ async function init() {
   const hiddenSize = 3;
   const outputSize = 1;  // 1 value per output
 
-  const W1 = graph.createNode('W1', { width: inputSize, height: hiddenSize, nodeType: 'train' });
   const X = graph.createNode('X', { width: batchSize, height: inputSize, nodeType: 'input' });
+  const W1 = graph.createNode('W1', { width: inputSize, height: hiddenSize, nodeType: 'train' });
   const B1 = graph.createNode('B1', { width: 1, height: hiddenSize, nodeType: 'train' });
   const Y1 = graph.createNode('Y1', { width: batchSize, height: hiddenSize, nodeType: 'intermediate' });
 
-  graph.multiplyAdd(W1, X, B1, Y1);
+  graph.multiplyAdd(X, W1, B1, Y1);
 
-  const W2 = graph.createNode('W2', { width: hiddenSize, height: outputSize, nodeType: 'train' });
   //    Y1 = graph.CreateNode({width: batchSize, height: hiddenSize});
+  const W2 = graph.createNode('W2', { width: hiddenSize, height: outputSize, nodeType: 'train' });
   const B2 = graph.createNode('B2', { width: 1, height: outputSize, nodeType: 'train' });
 
   const Y = graph.createNode('Y', { width: batchSize, height: outputSize, nodeType: 'output' });
 
-  graph.multiplyAdd(W2, Y1, B2, Y);
+  graph.multiplyAdd(Y1, W2, B2, Y);
 
   X.value.setValues(new Float32Array([  // 2x4
     0, 1, 0, 1, // row 1

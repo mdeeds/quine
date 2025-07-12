@@ -76,19 +76,12 @@ export class MatrixMultiplyOperation extends Operation {
     this.gpu.executeMatrixMultiplyT1(this.w, this.dy, this.dx);
   }
 
-  /**
-   * Applies the gradient to the learnable parameters.
-   * @param {number} learningRate 
-   */
-  addGradient(learningRate) {
-    this.gpu.executeMatrixUpdate(this.dw, learningRate, this.w);
-  }
 }
 
 export class FullyConnectedOperation extends Operation {
   /**
    * Creates a fully connected layer: 
-   * y = xw + b
+   * Y = XW + B
    * @param {Gpu!} gpu 
    * @param {LogicalMatrix!} x
    * @param {LogicalMatrix!} w 
@@ -117,7 +110,41 @@ export class FullyConnectedOperation extends Operation {
   }
 
   backward() {
+    // dW = X^T dY
+    // dB = sum(dY across all batches; i.e. sum colunmns)
+    // dX = dY W^T
+    this.gpu.executeMatrixMultiplyT1(this.x, this.dy, this.dw);
+    this.gpu.executeSumColumns(this.dy, this.db);
+    this.gpu.executeMatrixMultiplyT2(this.dy, this.w, this.dx);
+  }
+}
 
+export class ReluOperation extends Operation {
+  /**
+   * Y = RELU(X)
+   * @param {Gpu!} gpu 
+   * @param {LogicalMatrix!} x 
+   * @param {LogicalMatrix!} y 
+   * @param {LogicalMatrix!} dx 
+   * @param {LogicalMatrix!} dy 
+   */
+  constructor(gpu, x, y, dx, dy) {
+    super();
+    this.gpu = gpu;
+    this.x = x;
+    this.y = y;
+    this.dx = dx;
+    this.dy = dy;
+  }
+
+  forward() {
+    // Y = RELU(X)
+    this.gpu.executeRelu(this.x, this.y);
+  }
+
+  backward() {
+    // dX = dy (.) STEP(Y)
+    this.gpu.executeMulStep(this.y, this.dy, this.dx);
   }
 }
 

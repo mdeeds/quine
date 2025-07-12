@@ -7,18 +7,24 @@ precision highp float; // Good practice for precision
 
 in vec2 texCoord; // Interpolated texture coordinate from the vertex shader
 
+////////////////////////////////////
+// Y = atan(k(expected - actual)) / (PI/2)
+// Computes the derivitive of the loss function (I.e. dL)
+// `k` is a parameter to adjust how sharp the point is around the origin.
+// Higher values are more sharp.
+// The range is (-1, 1)
+////////////////////////////////////
 uniform sampler2D matrixExpected; // Texture containing matrix A
 uniform sampler2D matrixActual; // Texture containing matrix B
+uniform float k;
 
 out vec4 fragColor; // Output color (the computed matrix element)
 
-// Implements dLoss - the derivitive of our loss function comparing expected to actual outputs.
-// dL = atan(expected - actual)
 void main() {
   // Everything is the same shape, so we can use the texCoord varying directly.
   float expected = texture(matrixExpected, texCoord).r;
   float actual = texture(matrixActual, texCoord).r;
   float error = expected - actual;
 
-  fragColor = vec4(RECIP_HALF_PI * atan(error * 100.0), 0.0, 0.0, 1.0);
+  fragColor = vec4(RECIP_HALF_PI * atan(error * k), 0.0, 0.0, 1.0);
 }

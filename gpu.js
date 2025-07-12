@@ -139,6 +139,30 @@ export class Gpu {
     this.mdl_program.execute(expected, actual, dLoss);
   }
 
+  /**
+   * 
+   * @param {LogicalMatrix!} x 
+   * @param {LogicalMatrix!} y 
+   */
+  executeRelu(x, y) {
+    if (!this.relu_program) {
+      throw new Error('Relu program is not initialized');
+    }
+    this.relu_program.execute(x, y);
+  }
+
+  /**
+   * 
+   * @param {LogicalMatrix!} x 
+   * @param {LogicalMatrix!} y 
+   */
+  executeStep(x, y) {
+    if (!this.step_program) {
+      throw new Error('Step program is not initialized');
+    }
+    this.step_program.execute(x, y);
+  }
+
   /*********************************
    *      PRIVATE METHODS
    *********************************/
@@ -168,8 +192,6 @@ export class Gpu {
       this.context, await this._fetchProgram('mm-fragment.glsl'));
     this.mu_program = new _MatrixUpdateProgram(
       this.context, await this._fetchProgram('mscale-fragment.glsl'));
-    this.matanu_program = new _MatrixUpdateProgram(
-      this.context, await this._fetchProgram('matanscale-fragment.glsl'));
     this.mmt1_program = new _MatrixMultiplyT1Program(
       this.context, await this._fetchProgram('mmt1-fragment.glsl'));
     this.mmt2_program = new _MatrixMultiplyT2Program(
@@ -178,6 +200,10 @@ export class Gpu {
       this.context, await this._fetchProgram('mmab-fragment.glsl'));
     this.mdl_program = new _MatrixLossProgram(
       this.context, await this._fetchProgram('mdl-fragment.glsl'));
+    this.relu_program = new _ElementwiseProgram(
+      this.context, await this._fetchProgram('relu-fragment.glsl'));
+    this.step_program = new _ElementwiseProgram(
+      this.context, await this._fetchProgram('step-fragment.glsl'));
     return;
   }
 
@@ -318,7 +344,54 @@ export class Gpu {
 
     return finalResult;
   }
+}
 
+class _ElementwiseProgram {
+  /**
+   * 
+   * @param {Context!} context 
+   * @param {WebGLProgram!} program 
+   */
+  constructor(context, program) {
+    /** @type {WebGLProgram} */
+    this.program = program;
+    this.context = context;
+    const gl = context.gl;
+    this.matrix_Loc = gl.getUniformLocation(program, 'matrix');
+    if (!this.matrix_Loc) {
+      throw new Error("Missing uniform location in elementwise program.");
+    }
+  }
+
+  /**
+   * 
+   * @param {LogicalMatrix!} x 
+   * @param {LogicalMatrix!} y 
+   */
+  execute(x, y) {
+    const gl = this.context.gl
+    if (!x.sameSize(y)) {
+      throw new Error(`Matrix dimensions mismatch: X (${x.width}x${x.height}) and Y `);
+    }
+    gl.useProgram(this.program);
+    gl.disable(gl.BLEND);
+    const fbo = this.context.fbo;
+    // Bind the single, reusable FBO and attach the destination texture.
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, y.texture, 0);
+    gl.viewport(0, 0, y.width, y.height); // Ensure viewport matches texture size
+
+    // It's good practice to check FBO status after attaching a new texture.
+    const fboStatus = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+    if (fboStatus !== gl.FRAMEBUFFER_COMPLETE) {
+      throw new Error('Framebuffer not complete after attaching texture: ' + fboStatus);
+    }
+
+    gl.activeTexture(gl.TEXTURE0); // x
+    gl.bindTexture(gl.TEXTURE_2D, x.texture);
+    gl.uniform1i(this.matrix_Loc, 0);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); // Draw the quad
+  }
 }
 
 class _MatrixMultiplyAddBiasProgram {
@@ -570,9 +643,11 @@ class _MatrixLossProgram extends _ABCProgram {
     /** @type {WebGLProgram} */ this.program = program;
     this.context = context;
     const gl = context.gl;
+    this.k = 100.0;  // Pointiness factor.
 
     this.matrixExpected_Loc = gl.getUniformLocation(program, 'matrixExpected');
     this.matrixActual_Loc = gl.getUniformLocation(program, 'matrixActual');
+    this.k_Loc = gl.getUniformLocation(program, 'k');
     if (!this.matrixExpected_Loc || !this.matrixActual_Loc) {
       throw new Error("Missing uniform location in loss program.");
     }
@@ -586,6 +661,7 @@ class _MatrixLossProgram extends _ABCProgram {
   execute(expected, actual, loss) {
     const gl = this.context.gl;
     this._preambleABC();
+    gl.uniform1i(this.k_Loc, this.k);
     this._postambleABC(expected, this.matrixExpected_Loc, actual, this.matrixActual_Loc, loss);
   }
 }

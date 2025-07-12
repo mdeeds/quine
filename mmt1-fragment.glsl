@@ -4,6 +4,10 @@ precision highp float; // Good practice for precision
 
 in vec2 texCoord; // Interpolated texture coordinate from the vertex shader
 
+////////////////////////////////////
+// Y = A^T B
+// Matrix multiplication where A is transposed
+////////////////////////////////////
 uniform sampler2D matrixA; // Texture containing matrix A
 uniform sampler2D matrixB; // Texture containing matrix B
 // Width and height of the two matricies
@@ -14,8 +18,6 @@ uniform int B_width;
 
 out vec4 fragColor; // Output color (the computed matrix element)
 
-// Implements Matrix multipliaction where the A matrix is transposed.
-// C = A^T B
 void main() {
     // The sizes of the matricies can be inferred by the three uniforms provided.
     int B_height = A_height;

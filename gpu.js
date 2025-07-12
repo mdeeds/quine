@@ -177,11 +177,14 @@ export class Gpu {
     if (!code) {
       throw new Error(`Could not load fragment shader: ${glslPath}`);
     }
-    const result = this._createProgram(code);
-    if (!result) {
+    try {
+      const result = this._createProgram(code);
+      return result;
+    } catch {
       throw new Error(`Failed to create shader: ${glslPath}`);
+
     }
-    return result;
+    throw new Error(`Failed to create shader: ${glslPath}`);
   }
   /**
    * @returns {Promise<void>}
@@ -222,7 +225,7 @@ export class Gpu {
    * Creates a program for the provided fragment shader. This uses our standard
    * vertex shader and unit quads.
    * @param {string} fsSource 
-   * @returns {WebGLProgram | null}
+   * @returns {WebGLProgram!}
    */
   _createProgram(fsSource) {
     // Vertex Shader (simple pass-through)
@@ -237,7 +240,9 @@ export class Gpu {
     `;
     const vertexShader = this._createShader(this.gl.VERTEX_SHADER, vsSource);
     const fragmentShader = this._createShader(this.gl.FRAGMENT_SHADER, fsSource);
-    if (!vertexShader || !fragmentShader) return null;
+    if (!vertexShader || !fragmentShader) {
+      throw new Error('Shader creation failed.');
+    }
 
     const program = this.gl.createProgram();
     this.gl.attachShader(program, vertexShader);
@@ -247,7 +252,7 @@ export class Gpu {
     if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
       console.error('Program linking error:', this.gl.getProgramInfoLog(program));
       this.gl.deleteProgram(program);
-      return null;
+      throw new Error('Program linking failed.');
     }
     this._setupQuad(program);
     return program;
@@ -408,11 +413,11 @@ class _MatrixMultiplyAddBiasProgram {
     this.matrixX_Loc = gl.getUniformLocation(program, 'matrixX');
     this.matrixW_Loc = gl.getUniformLocation(program, 'matrixW');
     this.matrixB_Loc = gl.getUniformLocation(program, 'matrixB');
-    this.wWidthLoc = gl.getUniformLocation(program, 'W_width');
-    this.wHeightLoc = gl.getUniformLocation(program, 'W_height');
-    this.xWidthLoc = gl.getUniformLocation(program, 'X_width');
+    this.xWidth_Loc = gl.getUniformLocation(program, 'X_width');
+    this.xHeight_Loc = gl.getUniformLocation(program, 'X_height');
+    this.wWidth_Loc = gl.getUniformLocation(program, 'W_width');
     if (!this.matrixX_Loc || !this.matrixW_Loc || !this.matrixB_Loc ||
-      !this.wWidthLoc || !this.wHeightLoc || !this.xWidthLoc) {
+      !this.xWidth_Loc || !this.xHeight_Loc || !this.wWidth_Loc) {
       throw new Error("Missing uniform location in matrix multiply add bias program.");
     }
   }
@@ -446,9 +451,9 @@ class _MatrixMultiplyAddBiasProgram {
     gl.useProgram(this.program);
     gl.disable(gl.BLEND);
 
-    gl.uniform1i(this.wWidthLoc, w.width);
-    gl.uniform1i(this.wHeightLoc, w.height);
-    gl.uniform1i(this.xWidthLoc, x.width);
+    gl.uniform1i(this.xWidth_Loc, x.width);
+    gl.uniform1i(this.xHeight_Loc, x.height);
+    gl.uniform1i(this.wWidth_Loc, y.width);
 
     // Bind the single, reusable FBO and attach the destination texture.
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);

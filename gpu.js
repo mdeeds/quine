@@ -189,21 +189,21 @@ export class Gpu {
   async _initialize() {
     this._createQuadBuffers();
     this.mm_program = new _MatrixMultiplyProgram(
-      this.context, await this._fetchProgram('mm-fragment.glsl'));
+      this.context, await this._fetchProgram('fragments/mm.glsl'));
     this.mu_program = new _MatrixUpdateProgram(
-      this.context, await this._fetchProgram('mscale-fragment.glsl'));
+      this.context, await this._fetchProgram('fragments/mscale.glsl'));
     this.mmt1_program = new _MatrixMultiplyT1Program(
-      this.context, await this._fetchProgram('mmt1-fragment.glsl'));
+      this.context, await this._fetchProgram('fragments/mmt1.glsl'));
     this.mmt2_program = new _MatrixMultiplyT2Program(
-      this.context, await this._fetchProgram('mmt2-fragment.glsl'));
+      this.context, await this._fetchProgram('fragments/mmt2.glsl'));
     this.mmab_program = new _MatrixMultiplyAddBiasProgram(
-      this.context, await this._fetchProgram('mmab-fragment.glsl'));
+      this.context, await this._fetchProgram('fragments/mmab.glsl'));
     this.mdl_program = new _MatrixLossProgram(
-      this.context, await this._fetchProgram('mdl-fragment.glsl'));
+      this.context, await this._fetchProgram('fragments/mdl.glsl'));
     this.relu_program = new _ElementwiseProgram(
-      this.context, await this._fetchProgram('relu-fragment.glsl'));
+      this.context, await this._fetchProgram('fragments/relu.glsl'));
     this.step_program = new _ElementwiseProgram(
-      this.context, await this._fetchProgram('step-fragment.glsl'));
+      this.context, await this._fetchProgram('fragments/step.glsl'));
     return;
   }
 

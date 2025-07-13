@@ -143,28 +143,7 @@ export class ReluOperation extends Operation {
   }
 
   backward() {
-    // dX = dy (.) STEP(Y)
-    this.gpu.executeMulStep(this.y, this.dy, this.dx);
+    // dX = dy (.) STEP(10.0 * Y)
+    this.gpu.executeMulStep(this.y, 10.0, this.dy, this.dx);
   }
 }
-
-/** 
- * Implement an AddBias operation.  This should add a vector to the values in
- * a matrix.  The vector's length will be equal to the matrix's width.
- */
-
-/**
- * TODO: Sloppy Relu
- * In the forward pass, this is simply `y = max(0, x)`
- * In the backward pass, this is dy/dx = atan(x) + pi/2
- * This is super cheap to compute in both directions, and the small positive gradient
- * when the input is negative helps prevent "dead neurons".
- * The mismatched f'(x) is called "gradient shaping"
- */
-
-/**
- * TODO: Smooth L1 loss
- * This is a type of Huber-like Loss.  It's also a form of gradient shaping.
- * In the forward pass, the loss is `Loss = abs(error)`
- * In the backward pass, dLoss/dError = -1 if error < pi, 1 if error > pi, sin(error) otherwise.
- */

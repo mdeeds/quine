@@ -26,8 +26,17 @@ export class Gpu {
    * @returns {Promise<Gpu>}
    */
   static async create() {
-    const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl2');
+    let canvas;
+    // Use OffscreenCanvas if available for better performance and use in workers.
+    // Fallback to a regular canvas element for broader compatibility.
+    if (typeof OffscreenCanvas !== 'undefined') {
+      // The dimensions here don't matter for our use case, since we are only
+      // using the context to render to an offscreen framebuffer (FBO).
+      canvas = new OffscreenCanvas(1, 1);
+    } else {
+      canvas = document.createElement('canvas');
+    }
+    const gl = /** @type {WebGL2RenderingContext} */ (canvas.getContext('webgl2'));
 
     if (!gl) {
       throw new Error('Unable to initialize WebGL 2.0. Your browser or hardware ' +
@@ -182,7 +191,7 @@ export class Gpu {
    * @param {LogicalMatrix!} y
    */
   executeMulStep(a, k, b, y) {
-    if (!this.colsum_program) {
+    if (!this.mulstep_program) {
       throw new Error('Column sum program is not initialized');
     }
     this.mulstep_program.execute(a, k, b, y);
@@ -828,6 +837,13 @@ class _MulStepProgram {
     }
   }
 
+  /**
+   * 
+   * @param {LogicalMatrix!} a 
+   * @param {number!} k 
+   * @param {LogicalMatrix!} b 
+   * @param {LogicalMatrix!} y 
+   */
   execute(a, k, b, y) {
     const gl = this.context.gl;
     const fbo = this.context.fbo;

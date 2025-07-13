@@ -115,6 +115,28 @@ async function finish(graph) {
   });
 }
 
+async function displayAllNodes(graph) {
+  const d = document.getElementById('output');
+  if (!d) { throw new Error('Output div not found.') }
+  d.innerHTML = '';
+
+  const components = await getComponentsInBuildOrder(graph);
+  for (const component of components) {
+    console.log(component);
+    if (component.type === 'node') {
+      await addNodeInfo(graph, component.name, d);
+    }
+  }
+}
+
+async function addNodeInfo(graph, nodeName, container) {
+  const { values, gradients } = await getValues(graph, nodeName);
+  const d = document.createElement('div');
+  d.classList.add('node');
+  d.innerText = nodeName + ':\nValues' + JSON.stringify(values) + '\nGradients' + JSON.stringify(gradients) + '\n\n';
+  container.appendChild(d);
+}
+
 async function init() {
   console.log('Initializing...');
   const graph = new Worker('worker/script.js', { type: 'module' });
@@ -170,10 +192,8 @@ async function init() {
     console.log('Gradients:', gradients);
   }
 
-  const components = await getComponentsInBuildOrder(graph);
-  for (const component of components) {
-    console.log(component);
-  }
+  await displayAllNodes(graph);
+
 
   {
     const { values, gradients } = await getValues(graph, 'Y');

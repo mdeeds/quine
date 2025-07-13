@@ -229,10 +229,15 @@ export class Node {
   }
 
   /**
-   * @returns {string!}
+   * @returns {ComponentDescription!}
    */
   getDescription() {
-    return `${this.name} : matrix ${this.spec.height}x${this.spec.width}`;
+    const detail = `${this.name} : matrix ${this.spec.height}x${this.spec.width}`;
+    return {
+      name: this.name,
+      type: 'node',
+      detail
+    };
   }
 }
 
@@ -240,7 +245,24 @@ export class Connection {
   constructor(operation) {
     this.operation = operation;
   };
+
+  /**
+   * 
+   * @returns {ComponentDescription!}
+   */
   getDescription() {
+    return {
+      name: 'NA',
+      type: 'operation',
+      detail: this.getDetail()
+    };
+  }
+
+  /**
+   * 
+   * @returns {string!}
+   */
+  getDetail() {
     throw new Error("Implemented in child class.");
   }
 
@@ -276,7 +298,7 @@ export class MultiplyAdd extends Connection {
     this.y = y;
   }
 
-  getDescription() {
+  getDetail() {
     return `${this.y.name} = ${this.w.name} * ${this.x.name} + ${this.b.name}`;
   }
 }

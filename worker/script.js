@@ -2,6 +2,8 @@
 
 import { Gpu } from '../gpu.js';
 import { Graph, Node } from '../graph.js';
+/** @typedef {import('./api.js').WorkerRequest} WorkerRequest */
+/** @typedef {import('./api.js').ComponentDescription} ComponentDescription */
 
 /** @type {Gpu | null} */
 let gpu = null;
@@ -23,7 +25,7 @@ async function init() {
   }
 }
 
-self.onmessage = (/** @type {{ data: { type: string!; payload: any; }; }} */ e) => {
+self.onmessage = (/** @type {MessageEvent<WorkerRequest>} */ e) => {
   if (!gpu || !graph) {
     // This could happen if a message is sent before 'init' completes.
     // A robust implementation might queue messages, but for now, we'll just error.

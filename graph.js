@@ -32,6 +32,8 @@ export class Graph {
     this.allNodes = new Set();  /** @type {Set<Node>} */
     this.allConnections = new Set();  /** @type {Set<Connection>} */
 
+    this.nodeMap = new Map();  /** @type {Map<string, Node>} */
+
     this.dependencies = [];  /** @type {Array<Dependency>} */
 
     this.lossPairs = [];  /** @type {Array<{actual: Node, expected: Node}>} */
@@ -41,30 +43,42 @@ export class Graph {
    * 
    * @param {string!} name 
    * @param {MatrixSpec!} spec 
-   * @returns {Node!}
    */
   createNode(name, spec) {
+    if (this.nodeMap.has(name)) {
+      throw new Error(`Node with name ${name} already exists.`);
+    }
+    this.nodeMap.set(name, spec)
     const node = new Node(this.gpu, name, spec);
     this.components.push(node);
     this.allNodes.add(node);
-    return node;
+    this.nodeMap.set(name, node);
   }
 
   /**
    * 
-   * @param {Node!} x 
-   * @param {Node!} w 
-   * @param {Node!} b 
-   * @param {Node!} y 
+   * @param {Object} spec
+   * @param {string!} spec.x 
+   * @param {string!} spec.w 
+   * @param {string!} spec.b 
+   * @param {string!} spec.y 
    */
-  multiplyAdd(x, w, b, y) {
-    const connection = new MultiplyAdd(this.gpu, x, w, b, y);
+  multiplyAdd({ x, w, b, y }) {
+    const xNode = this.nodeMap.get(x);
+    const wNode = this.nodeMap.get(w);
+    const bNode = this.nodeMap.get(b);
+    const yNode = this.nodeMap.get(y);
+    if (!xNode || !wNode || !bNode || !yNode) {
+      throw new Error("Invalid node name.");
+    }
+
+    const connection = new MultiplyAdd(this.gpu, xNode, wNode, bNode, yNode);
     this.components.push(connection);
     this.allConnections.add(connection);
-    this.dependencies.push({ source: x, target: connection });
-    this.dependencies.push({ source: w, target: connection });
-    this.dependencies.push({ source: b, target: connection });
-    this.dependencies.push({ source: connection, target: y });
+    this.dependencies.push({ source: xNode, target: connection });
+    this.dependencies.push({ source: wNode, target: connection });
+    this.dependencies.push({ source: bNode, target: connection });
+    this.dependencies.push({ source: connection, target: yNode });
   }
 
   /**
@@ -72,7 +86,12 @@ export class Graph {
    * @param {{actual: Node, expected: Node}} spec
    */
   loss({ actual, expected }) {
-    this.lossPairs.push({ actual, expected });
+    const actualNode = this.nodeMap.get(actual);
+    const expectedNode = this.nodeMap.get(expected);
+    if (!actualNode || !expectedNode) {
+      throw new Error("Invalid node name.");
+    }
+    this.lossPairs.push({ actual: actualNode, expected: expectedNode });
   }
 
   /**
@@ -193,7 +212,11 @@ export class Node {
     this.name = name;
     this.spec = spec;
     // At some point, we might want to think about pooling these textures.
+
+    /** @type {LogicalMatrix!} */
     this.value = new LogicalMatrix(gpu.context, spec.width, spec.height, 'zero');
+
+    /** @type {LogicalMatrix!} */
     this.gradient = new LogicalMatrix(gpu.context, spec.width, spec.height, 'zero');
   }
 

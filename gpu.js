@@ -225,25 +225,25 @@ export class Gpu {
   async _initialize() {
     this._createQuadBuffers();
     this.mm_program = new _MatrixMultiplyProgram(
-      this.context, await this._fetchProgram('fragments/mm.glsl'));
+      this.context, await this._fetchProgram('/fragments/mm.glsl'));
     this.mu_program = new _MatrixUpdateProgram(
-      this.context, await this._fetchProgram('fragments/mscale.glsl'));
+      this.context, await this._fetchProgram('/fragments/mscale.glsl'));
     this.mmt1_program = new _MatrixMultiplyT1Program(
-      this.context, await this._fetchProgram('fragments/mmt1.glsl'));
+      this.context, await this._fetchProgram('/fragments/mmt1.glsl'));
     this.mmt2_program = new _MatrixMultiplyT2Program(
-      this.context, await this._fetchProgram('fragments/mmt2.glsl'));
+      this.context, await this._fetchProgram('/fragments/mmt2.glsl'));
     this.mmab_program = new _MatrixMultiplyAddBiasProgram(
-      this.context, await this._fetchProgram('fragments/mmab.glsl'));
+      this.context, await this._fetchProgram('/fragments/mmab.glsl'));
     this.mdl_program = new _MatrixLossProgram(
-      this.context, await this._fetchProgram('fragments/mdl.glsl'));
+      this.context, await this._fetchProgram('/fragments/mdl.glsl'));
     this.relu_program = new _ElementwiseProgram(
-      this.context, await this._fetchProgram('fragments/relu.glsl'));
+      this.context, await this._fetchProgram('/fragments/relu.glsl'));
     this.step_program = new _ElementwiseProgram(
-      this.context, await this._fetchProgram('fragments/step.glsl'));
+      this.context, await this._fetchProgram('/fragments/step.glsl'));
     this.colsum_program = new _ColSumProgram(
-      this.context, await this._fetchProgram('fragments/colsum.glsl'));
+      this.context, await this._fetchProgram('/fragments/colsum.glsl'));
     this.mulstep_program = new _MulStepProgram(
-      this.context, await this._fetchProgram('fragments/mulstep.glsl'));
+      this.context, await this._fetchProgram('/fragments/mulstep.glsl'));
 
     return;
   }

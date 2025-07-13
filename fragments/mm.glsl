@@ -50,7 +50,5 @@ void main() {
         texCoordB += d_texCoordB;
     }
 
-  // Output the computed element.
-  // Store it in the red channel, or all channels if you prefer grayscale.
   fragColor = vec4(sum, 0.0, 0.0, 1.0); // Store only in red channel for R32F texture
 }

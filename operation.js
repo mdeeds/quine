@@ -114,7 +114,7 @@ export class FullyConnectedOperation extends Operation {
     // dB = sum(dY across all batches; i.e. sum colunmns)
     // dX = dY W^T
     this.gpu.executeMatrixMultiplyT1(this.x, this.dy, this.dw);
-    this.gpu.executeSumColumns(this.dy, this.db);
+    this.gpu.executeColSum(this.dy, this.db);
     this.gpu.executeMatrixMultiplyT2(this.dy, this.w, this.dx);
   }
 }

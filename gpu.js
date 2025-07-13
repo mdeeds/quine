@@ -163,6 +163,32 @@ export class Gpu {
     this.step_program.execute(x, y);
   }
 
+  /**
+   * 
+   * @param {LogicalMatrix!} a
+   * @param {LogicalMatrix!} y
+   */
+  executeColSum(a, y) {
+    if (!this.colsum_program) {
+      throw new Error('Column sum program is not initialized');
+    }
+    this.colsum_program.execute(a, y);
+  }
+  /**
+   * 
+   * @param {LogicalMatrix!} a
+   * @param {number!} k
+   * @param {LogicalMatrix!} b
+   * @param {LogicalMatrix!} y
+   */
+  executeMulStep(a, k, b, y) {
+    if (!this.colsum_program) {
+      throw new Error('Column sum program is not initialized');
+    }
+    this.mulstep_program.execute(a, k, b, y);
+  }
+
+
   /*********************************
    *      PRIVATE METHODS
    *********************************/
@@ -182,9 +208,7 @@ export class Gpu {
       return result;
     } catch {
       throw new Error(`Failed to create shader: ${glslPath}`);
-
     }
-    throw new Error(`Failed to create shader: ${glslPath}`);
   }
   /**
    * @returns {Promise<void>}
@@ -207,6 +231,11 @@ export class Gpu {
       this.context, await this._fetchProgram('fragments/relu.glsl'));
     this.step_program = new _ElementwiseProgram(
       this.context, await this._fetchProgram('fragments/step.glsl'));
+    this.colsum_program = new _ColSumProgram(
+      this.context, await this._fetchProgram('fragments/colsum.glsl'));
+    this.mulstep_program = new _MulStepProgram(
+      this.context, await this._fetchProgram('fragments/mulstep.glsl'));
+
     return;
   }
 
@@ -666,7 +695,7 @@ class _MatrixLossProgram extends _ABCProgram {
   execute(expected, actual, loss) {
     const gl = this.context.gl;
     this._preambleABC();
-    gl.uniform1i(this.k_Loc, this.k);
+    gl.uniform1f(this.k_Loc, this.k);
     this._postambleABC(expected, this.matrixExpected_Loc, actual, this.matrixActual_Loc, loss);
   }
 }
@@ -725,6 +754,103 @@ class _MatrixUpdateProgram {
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, a.texture);
     gl.uniform1i(this.matrixA_Loc, 0); // texture unit 0
+
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); // Draw the quad
+  }
+}
+
+class _ColSumProgram {
+  /**
+   * 
+   * @param {Context!} context 
+   * @param {WebGLProgram!} program 
+   */
+  constructor(context, program) {
+    /** @type {WebGLProgram} */
+    this.program = program;
+    this.context = context;
+    const gl = context.gl;
+    this.matrixA_Loc = gl.getUniformLocation(program, 'matrixA');
+    this.aHeightLoc = gl.getUniformLocation(program, 'A_height');
+    if (!this.matrixA_Loc || !this.aHeightLoc) {
+      throw new Error("Missing uniform location in column sum program.");
+    }
+  }
+
+  /**
+   * Sums the columns of matrixA and stores the result in matrixB.
+   * matrixB should have dimensions 1 x matrixA.width.
+   * @param {LogicalMatrix!} a 
+   * @param {LogicalMatrix!} b 
+   */
+  execute(a, b) {
+    if (b.height !== 1 || b.width !== a.width) {
+      throw new Error(`Matrix B dimensions mismatch: B (${b.width}x${b.height}) must be 1x${a.width}.`);
+    }
+
+    const gl = this.context.gl;
+    const fbo = this.context.fbo;
+    gl.useProgram(this.program);
+    gl.disable(gl.BLEND);
+
+    // Activate textures and assign uniforms
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, a.texture);
+    gl.uniform1i(this.matrixA_Loc, 0); // texture unit 0
+    gl.uniform1i(this.aHeightLoc, a.height);
+
+    // Bind the single, reusable FBO and attach the destination texture.
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, b.texture, 0);
+    gl.viewport(0, 0, b.width, b.height); // Ensure viewport matches texture size
+
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); // Draw the quad
+  }
+}
+
+class _MulStepProgram {
+  /**
+   * 
+   * @param {Context!} context 
+   * @param {WebGLProgram!} program 
+   */
+  constructor(context, program) {
+    /**@type {WebGLProgram!} */
+    this.program = program;
+    this.context = context;
+    const gl = context.gl;
+    this.matrixA_Loc = gl.getUniformLocation(program, 'matrixA');
+    this.matrixB_Loc = gl.getUniformLocation(program, 'matrixB');
+
+    this.k_Loc = gl.getUniformLocation(program, 'k');
+    if (!this.matrixA_Loc || !this.matrixB_Loc || !this.k_Loc) {
+      throw new Error("Missing uniform location in mul step program.");
+    }
+  }
+
+  execute(a, k, b, y) {
+    const gl = this.context.gl;
+    const fbo = this.context.fbo;
+    gl.useProgram(this.program);
+    gl.disable(gl.BLEND);
+
+    // Activate textures and assign uniforms
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, a.texture);
+    gl.uniform1i(this.matrixA_Loc, 0); // texture unit 0
+
+    gl.uniform1f(this.k_Loc, k);
+
+    // Activate textures and assign uniforms
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, b.texture);
+    gl.uniform1i(this.matrixB_Loc, 1); // texture unit 1
+
+
+    // Bind the single, reusable FBO and attach the destination texture.
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, y.texture, 0);
+    gl.viewport(0, 0, y.width, y.height); // Ensure viewport matches texture size
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); // Draw the quad
   }

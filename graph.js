@@ -162,7 +162,12 @@ export class Graph {
   backwardAndAddGradient(learningRate) {
     // Compute the loss and put the gradient into the output node.
     for (const { actual, expected } of this.lossPairs) {
-      this.gpu.executeLoss(expected.value, actual.value, actual.gradient);
+      this.gpu.executeLoss(
+        {
+          actual: actual.value,
+          expected: expected.value,
+          dLoss: actual.gradient
+        });
     }
 
     const components = this.getComponentsInBuildOrder().reverse();

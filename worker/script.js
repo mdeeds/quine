@@ -43,6 +43,8 @@ self.onmessage = (/** @type {MessageEvent<WorkerRequest>} */ e) => {
     if (payload && payload.name) {
       console.log('Received message: ', type, ' ', payload.name);
       node = graph.nodeMap.get(payload.name);
+    } else {
+      console.log('Received message: ', type);
     }
     switch (type) {
       case 'createNode': {
@@ -88,6 +90,10 @@ self.onmessage = (/** @type {MessageEvent<WorkerRequest>} */ e) => {
         self.postMessage(
           { type: 'getValues', payload: { values, gradients } },
           [values.buffer, gradients.buffer]);
+        break;
+      case 'finish':
+        gpu.context.gl.finish();
+        self.postMessage({ type: 'finish' });
         break;
 
       default:

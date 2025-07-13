@@ -14,8 +14,8 @@ in vec2 texCoord; // Interpolated texture coordinate from the vertex shader
 // Higher values are more sharp.
 // The range is (-1, 1)
 ////////////////////////////////////
-uniform sampler2D matrixExpected; // Texture containing matrix A
-uniform sampler2D matrixActual; // Texture containing matrix B
+uniform sampler2D matrixExpected; // Texture containing expected matrix
+uniform sampler2D matrixActual; // Texture containing actual matrix
 uniform float k;
 
 out vec4 fragColor; // Output color (the computed matrix element)

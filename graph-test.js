@@ -93,6 +93,28 @@ async function waitForReady(graph) {
   });
 }
 
+/**
+ * 
+ * @param {Worker} graph 
+ * @returns {Promise<void>}
+ */
+async function finish(graph) {
+  return new Promise((resolve, reject) => {
+    const messageHandler = (/** @type {{ data: { type: string; payload: any; }; }} */ e) => {
+      const { type } = e.data;
+      // We only care about the response to our specific request.
+      // TODO: More robust is to pass an id into the message and wait for that id in the response.
+      if (type === 'finish') {
+        graph.removeEventListener('message', messageHandler); // Detach handler
+        console.log('Worker finished.');
+        resolve();
+      }
+    }
+    graph.addEventListener('message', messageHandler);
+    graph.postMessage({ type: 'finish' });
+  });
+}
+
 async function init() {
   console.log('Initializing...');
   const graph = new Worker('worker/script.js', { type: 'module' });
@@ -131,7 +153,7 @@ async function init() {
     }
   });
 
-  createNode(graph, 'Expected', { width: batchSize, height: outputSize, nodeType: 'output' });
+  createNode(graph, 'Expected', { height: batchSize, width: outputSize, nodeType: 'output' });
   graph.postMessage({
     type: 'setValues', payload: { name: 'Expected', values: [0, 1, 1, 0] }
   });
@@ -142,6 +164,12 @@ async function init() {
   graph.postMessage({ type: 'forward' });
   graph.postMessage({ type: 'backwardAndAddGradient', payload: { learningRate: 0.05 } });
 
+  {
+    const { values, gradients } = await getValues(graph, 'Y');
+    console.log('Values:', values);
+    console.log('Gradients:', gradients);
+  }
+
   const components = await getComponentsInBuildOrder(graph);
   for (const component of components) {
     console.log(component);
@@ -149,6 +177,11 @@ async function init() {
 
   {
     const { values, gradients } = await getValues(graph, 'Y');
+    console.log('Values:', values);
+    console.log('Gradients:', gradients);
+  }
+  {
+    const { values, gradients } = await getValues(graph, 'Expected');
     console.log('Values:', values);
     console.log('Gradients:', gradients);
   }

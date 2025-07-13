@@ -141,11 +141,11 @@ export class Gpu {
     this.mmab_program.execute(x, w, b, y);
   }
 
-  executeLoss(expected, actual, dLoss) {
+  executeLoss({ expected, actual, dLoss }) {
     if (!this.mdl_program) {
       throw new Error('Loss program is not initialized');
     }
-    this.mdl_program.execute(expected, actual, dLoss);
+    this.mdl_program.execute({ expected, actual, dLoss });
   }
 
   /**
@@ -675,14 +675,13 @@ class _MatrixMultiplyT2Program extends _MatrixMultiplyProgram {
 }
 
 
-class _MatrixLossProgram extends _ABCProgram {
+class _MatrixLossProgram {
   /**
-   * 
-   * @param {Context!} context 
-   * @param {WebGLProgram!} program 
-   */
+ * 
+ * @param {Context!} context 
+ * @param {WebGLProgram!} program 
+ */
   constructor(context, program) {
-    super(context, program);
     /** @type {WebGLProgram} */ this.program = program;
     this.context = context;
     const gl = context.gl;
@@ -695,17 +694,43 @@ class _MatrixLossProgram extends _ABCProgram {
       throw new Error("Missing uniform location in loss program.");
     }
   }
-  /**
-   * 
-   * @param {LogicalMatrix!} expected
-   * @param {LogicalMatrix!} actual
-   * @param {LogicalMatrix!} loss
-   */
-  execute(expected, actual, loss) {
+  execute({ expected, actual, dLoss }) {
+    if (!expected.sameSize(actual) || !expected.sameSize(dLoss)) {
+      throw new Error(`Matrix dimensions mismatch: ` +
+        `Expected (${expected.width}x${expected.height}), ` +
+        `Actual (${actual.width}x${actual.height}), ` +
+        `and Loss (${dLoss.width}x${dLoss.height}).`);
+    }
+
+    console.log(`Executing matrix loss program`);
     const gl = this.context.gl;
-    this._preambleABC();
+    gl.useProgram(this.program);
+    gl.disable(gl.BLEND);
+
+    const fbo = this.context.fbo;
+    // Bind the single, reusable FBO and attach the destination texture.
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, dLoss.texture, 0);
+    gl.viewport(0, 0, dLoss.width, dLoss.height); // Ensure viewport matches texture size
+
+    // It's good practice to check FBO status after attaching a new texture.
+    const fboStatus = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+    if (fboStatus !== gl.FRAMEBUFFER_COMPLETE) {
+      throw new Error('Framebuffer not complete after attaching texture: ' + fboStatus);
+    }
+
     gl.uniform1f(this.k_Loc, this.k);
-    this._postambleABC(expected, this.matrixExpected_Loc, actual, this.matrixActual_Loc, loss);
+    // Activate textures and assign uniforms
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, expected.texture);
+    gl.uniform1i(this.matrixExpected_Loc, 0); // texture unit 0
+
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, actual.texture);
+    gl.uniform1i(this.matrixActual_Loc, 1); // texture unit 1
+
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); // Draw the 
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 }
 
@@ -869,5 +894,6 @@ class _MulStepProgram {
     gl.viewport(0, 0, y.width, y.height); // Ensure viewport matches texture size
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); // Draw the quad
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 }

@@ -69,7 +69,7 @@ export class Graph {
 
   /**
    * 
-   * @param {object} spec 
+   * @param {{actual: Node, expected: Node}} spec
    */
   loss({ actual, expected }) {
     this.lossPairs.push({ actual, expected });
@@ -141,6 +141,11 @@ export class Graph {
    * @param {number!} learningRate 
    */
   backwardAndAddGradient(learningRate) {
+    // Compute the loss and put the gradient into the output node.
+    for (const { actual, expected } of this.lossPairs) {
+      this.gpu.executeLoss(expected.value, actual.value, actual.gradient);
+    }
+
     const components = this.getComponentsInBuildOrder().reverse();
 
     // Clear gradients on all non-output nodes.
@@ -197,7 +202,7 @@ export class Node {
    * @param {number!} learningRate
    */
   addGradient(learningRate) {
-    this.gpu.executeMatrixUpdate(this.gradient, learningRate, this.value);
+    this.gpu.executeMatrixUpdate(this.gradient, -learningRate, this.value);
   }
 
   /**

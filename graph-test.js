@@ -17,18 +17,18 @@ async function init() {
   const hiddenSize = 3;
   const outputSize = 1;  // 1 value per output
 
-  const X = graph.createNode('X', { width: batchSize, height: inputSize, nodeType: 'input' });
-  const W1 = graph.createNode('W1', { width: inputSize, height: hiddenSize, nodeType: 'train' });
-  const B1 = graph.createNode('B1', { width: 1, height: hiddenSize, nodeType: 'train' });
-  const Y1 = graph.createNode('Y1', { width: batchSize, height: hiddenSize, nodeType: 'intermediate' });
+  const X = graph.createNode('X', { height: batchSize, width: inputSize, nodeType: 'input' });
+  const W1 = graph.createNode('W1', { height: inputSize, width: hiddenSize, nodeType: 'train' });
+  const B1 = graph.createNode('B1', { height: 1, width: hiddenSize, nodeType: 'train' });
+  const Y1 = graph.createNode('Y1', { height: batchSize, width: hiddenSize, nodeType: 'intermediate' });
 
   graph.multiplyAdd(X, W1, B1, Y1);
 
-  //    Y1 = graph.CreateNode({width: batchSize, height: hiddenSize});
-  const W2 = graph.createNode('W2', { width: hiddenSize, height: outputSize, nodeType: 'train' });
-  const B2 = graph.createNode('B2', { width: 1, height: outputSize, nodeType: 'train' });
+  //    Y1 = graph.CreateNode({height: batchSize, width: hiddenSize});
+  const W2 = graph.createNode('W2', { height: hiddenSize, width: outputSize, nodeType: 'train' });
+  const B2 = graph.createNode('B2', { height: outputSize, width: 1, nodeType: 'train' });
 
-  const Y = graph.createNode('Y', { width: batchSize, height: outputSize, nodeType: 'output' });
+  const Y = graph.createNode('Y', { height: batchSize, width: outputSize, nodeType: 'output' });
 
   graph.multiplyAdd(Y1, W2, B2, Y);
 
@@ -48,6 +48,8 @@ async function init() {
 
   graph.loss({ actual: Y, expected: expected });
 
+  graph.forward();
+  graph.backwardAndAddGradient(0.05);
 }
 
 document.addEventListener('DOMContentLoaded', () => { init(); });

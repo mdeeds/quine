@@ -161,11 +161,16 @@ async function init() {
 
   multiplyAdd(graph, 'X', 'W1', 'B1', 'Y1');
 
+  createNode(graph, 'R1', { height: batchSize, width: hiddenSize, nodeType: 'intermediate' });
+  graph.postMessage({ type: 'relu', payload: { x: 'Y1', y: 'R1' } });
+
   createNode(graph, 'W2', { height: hiddenSize, width: outputSize, nodeType: 'train' });
   createNode(graph, 'B2', { height: outputSize, width: 1, nodeType: 'train' });
-  createNode(graph, 'Y', { height: batchSize, width: outputSize, nodeType: 'output' });
+  createNode(graph, 'Y2', { height: batchSize, width: outputSize, nodeType: 'intermediate' });
 
-  multiplyAdd(graph, 'Y1', 'W2', 'B2', 'Y');
+  multiplyAdd(graph, 'Y1', 'W2', 'B2', 'Y2');
+  createNode(graph, 'Y', { height: batchSize, width: outputSize, nodeType: 'output' });
+  graph.postMessage({ type: 'relu', payload: { x: 'Y2', y: 'Y' } });
 
   graph.postMessage({
     type: 'setValues', payload: {

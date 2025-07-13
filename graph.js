@@ -2,7 +2,7 @@
 
 import { Gpu } from './gpu.js';
 import { LogicalMatrix } from './matrix.js';
-import { FullyConnectedOperation } from './operation.js';
+import { FullyConnectedOperation, ReluOperation } from './operation.js';
 
 /**
  * @typedef {object} MatrixSpec
@@ -78,6 +78,20 @@ export class Graph {
     this.dependencies.push({ source: xNode, target: connection });
     this.dependencies.push({ source: wNode, target: connection });
     this.dependencies.push({ source: bNode, target: connection });
+    this.dependencies.push({ source: connection, target: yNode });
+  }
+
+  relu({ x, y }) {
+    const xNode = this.nodeMap.get(x);
+    const yNode = this.nodeMap.get(y);
+    if (!xNode || !yNode) {
+      throw new Error("Invalid node name.");
+    }
+    const connection = new Relu(
+      this.gpu, xNode, yNode);
+    this.components.push(connection);
+    this.allConnections.add(connection);
+    this.dependencies.push({ source: xNode, target: connection });
     this.dependencies.push({ source: connection, target: yNode });
   }
 
@@ -305,5 +319,17 @@ export class MultiplyAdd extends Connection {
 
   getDetail() {
     return `${this.y.name} = ${this.w.name} * ${this.x.name} + ${this.b.name}`;
+  }
+}
+
+export class Relu extends Connection {
+  constructor(gpu, x, y) {
+    super(new ReluOperation(gpu, x.value, y.value, x.gradient, y.gradient));
+    this.x = x;
+    this.y = y;
+  }
+
+  getDetail() {
+    return `${this.y.name} = relu(${this.x.name})`;
   }
 }

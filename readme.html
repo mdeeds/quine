@@ -1,0 +1,62 @@
+<div>
+  <h1> Project Quine </h1>
+
+  The Quine project implements a language model that is small enough to run and train on a single consumer GPU.
+
+  It has three components:
+
+  <ul>
+    <li> GPU math implementation
+    <li> Tokenizer </li>
+    <li> Computation Graph Toolkit </li>
+  </ul>
+
+  <div>
+    <h2> GPU math implementation </h2>
+    The GPU math implementation runs in a web worker using an offscreen WebGL2 context.
+
+    It is implemented in three components:
+
+    <ul>
+      <li> Web Worker </li>
+      <li> GLSL Shader code fragments </li>
+      <li> GPU interfacing code </li>
+    </ul>
+
+    <p>
+      You can test the matrix multiplication <a href="mm-test.html">here</a>.
+    </p>
+
+  </div>
+
+  <div>
+    <h2> Tokenizer </h2>
+    The tokenizer uses Byte-Pair Encoding (BPE) to convert text into a sequence of tokens.
+    It can be trained on a corpus to create a custom vocabulary.
+
+    <p>
+      You can experiment with the tokenizer <a href="token.html">here</a>.
+    </p>
+  </div>
+
+  <div>
+    <h2> Computation Graph Toolkit </h2>
+    The computation graph toolkit provides the building blocks for creating and training neural networks.
+    It defines operations as nodes in a graph, which allows for automatic differentiation (backpropagation) to calculate
+    gradients for model training.
+
+    <ul>
+      <li>Defines various mathematical operations (e.g., matrix multiply, add, activation functions).</li>
+      <li>Builds a graph of these operations to represent a model.</li>
+      <li>Performs a forward pass to compute predictions.</li>
+      <li>Performs a backward pass (backpropagation) to compute gradients.</li>
+      <li>Updates model weights based on the gradients.</li>
+    </ul>
+
+    <p>
+      A simple learning example demonstrating these steps can be found <a href="learn-test.html">here</a>.
+    </p>
+  </div>
+
+
+</div>

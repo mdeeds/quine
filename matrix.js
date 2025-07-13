@@ -64,7 +64,7 @@ export class LogicalMatrix {
     if (f32.length !== this.width * this.height) {
       throw new Error(`Data size (${f32.length}) does not match matrix dimensions (${this.width}x${this.height}).`);
     }
-    console.log('Data:', f32);
+    // console.log('Data:', f32);
     const gl = this.context.gl;
 
     // Explicitly unbind any pixel unpack buffer to prevent potential state issues.

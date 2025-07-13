@@ -81,8 +81,8 @@ self.onmessage = (/** @type {{ data: { type: string!; payload: any; }; }} */ e) 
         }
         const values = node.value.getValues();
         const gradients = node.gradient.getValues();
-        console.log('Values:', values);
-        console.log('Gradients:', gradients);
+        // console.log('Values:', values);
+        // console.log('Gradients:', gradients);
         self.postMessage(
           { type: 'getValues', payload: { values, gradients } },
           [values.buffer, gradients.buffer]);
@@ -105,3 +105,39 @@ self.onmessage = (/** @type {{ data: { type: string!; payload: any; }; }} */ e) 
 
 // Start the initialization process.
 init();
+
+// TODO: after enqueing a whole bunch of forward/backward passes, we can call gl.finish() in the worker to block
+// until computations are done.  We might want to implement 'finish' as a message and reply when it is done.
+
+// TODO: Consider some option for measuring performance by putting start/stop messages into the render queue
+/*
+// Check if the extension is available
+const ext = gl.getExtension('EXT_disjoint_timer_query_webgl2');
+
+if (ext) {
+    const query = gl.createQuery();
+    gl.beginQuery(ext.TIME_ELAPSED_EXT, query);
+
+    // Your WebGL computation commands here
+    gl.drawArrays(gl.TRIANGLES, 0, 6); // Example computation
+
+    gl.endQuery(ext.TIME_ELAPSED_EXT);
+
+    // Check the query result later (asynchronously)
+    const checkQuery = () => {
+        const available = gl.getQueryParameter(query, gl.QUERY_RESULT_AVAILABLE);
+        if (available) {
+            const elapsedNanos = gl.getQueryParameter(query, gl.QUERY_RESULT);
+            const elapsedMillis = elapsedNanos / 1_000_000;
+            console.log(`GPU computation took: ${elapsedMillis.toFixed(2)} ms`);
+            gl.deleteQuery(query);
+        } else {
+            requestAnimationFrame(checkQuery); // Or setTimeout/setInterval
+        }
+    };
+    requestAnimationFrame(checkQuery);
+} else {
+    console.warn('EXT_disjoint_timer_query_webgl2 not supported.');
+}
+
+*/

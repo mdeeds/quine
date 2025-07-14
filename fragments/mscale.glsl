@@ -13,10 +13,18 @@ in vec2 texCoord; // Interpolated texture coordinate from the vertex shader
 ////////////////////////////////////
 uniform sampler2D matrixA; // Texture containing matrix A
 uniform float alpha;
+uniform float r;  // Amount of random noise to add.
+uniform float t;  // An arbitrary 'time' number used for random number generation.
 
 out vec4 fragColor; // Output color (the computed matrix element)
 
+float rand(float x) {
+  return 2.0 * (fract(sin(x) * 43758.5453123) - 0.5);
+}
+
 void main() {
   float a = alpha * texture(matrixA, texCoord).r;
-  fragColor = vec4(a, 0.0, 0.0, 1.0);
+  float noise = r * rand(t + texCord.x + texCoord.y);
+
+  fragColor = vec4(a + noise, 0.0, 0.0, 1.0);
 }

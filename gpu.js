@@ -434,6 +434,7 @@ class _ElementwiseProgram {
     gl.bindTexture(gl.TEXTURE_2D, x.texture);
     gl.uniform1i(this.matrix_Loc, 0);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); // Draw the quad
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 }
 
@@ -518,6 +519,7 @@ class _MatrixMultiplyAddBiasProgram {
     gl.uniform1i(this.matrixB_Loc, 2);
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); // Draw the quad
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 }
 
@@ -565,6 +567,7 @@ class _ABCProgram {
     gl.uniform1i(matrixB_Loc, 1); // texture unit 1
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); // Draw the quad
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 }
 
@@ -690,6 +693,7 @@ class _MatrixLossProgram {
     this.matrixExpected_Loc = gl.getUniformLocation(program, 'matrixExpected');
     this.matrixActual_Loc = gl.getUniformLocation(program, 'matrixActual');
     this.k_Loc = gl.getUniformLocation(program, 'k');
+
     if (!this.matrixExpected_Loc || !this.matrixActual_Loc) {
       throw new Error("Missing uniform location in loss program.");
     }
@@ -750,6 +754,10 @@ class _MatrixUpdateProgram {
     this.alpha_Loc = gl.getUniformLocation(program, 'alpha');
     this.widthLoc = gl.getUniformLocation(program, 'width');
     this.heightLoc = gl.getUniformLocation(program, 'height');
+
+    this.r_Loc = gl.getUniformLocation(program, 'r');
+    this.t_Loc = gl.getUniformLocation(program, 't');
+    this.t = Math.random();
   }
 
   /**
@@ -772,6 +780,9 @@ class _MatrixUpdateProgram {
     gl.uniform1i(this.widthLoc, a.width);
     gl.uniform1i(this.heightLoc, a.height);
     gl.uniform1f(this.alpha_Loc, alpha);
+    gl.uniform1f(this.r_Loc, 0.1);  // noise level
+    gl.uniform1f(this.t_Loc, this.t);  // pointiness factor
+    this.t += Math.random();
 
     // Bind the single, reusable FBO and attach the destination texture.
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
@@ -790,6 +801,7 @@ class _MatrixUpdateProgram {
     gl.uniform1i(this.matrixA_Loc, 0); // texture unit 0
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); // Draw the quad
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 }
 
@@ -839,6 +851,7 @@ class _ColSumProgram {
     gl.viewport(0, 0, b.width, b.height); // Ensure viewport matches texture size
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); // Draw the quad
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 }
 

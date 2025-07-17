@@ -144,7 +144,6 @@ async function displayAllNodes(graph) {
   }
   const components = await getComponentsInBuildOrder(graph);
   for (const component of components) {
-    console.log(component);
     if (component.type === 'node') {
       await addNodeInfo(graph, component.name, d);
     }
@@ -156,14 +155,12 @@ async function addNodeInfo(graph, nodeName, container) {
   let textMatrix = textMatrixMap.get(nodeName);
   if (!textMatrix) {
     const spec = await getSpec(graph, nodeName);
-    console.log('Spec:', spec);
     textMatrix = new TextMatrix(nodeName, spec);
     textMatrixMap.set(nodeName, textMatrix);
     container.appendChild(textMatrix.div);
   }
   const { values, gradients } = await getValues(graph, nodeName);
   textMatrix.update(values, gradients);
-  console.log('AAAAA');
   return;
 }
 

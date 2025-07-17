@@ -42,10 +42,7 @@ self.onmessage = (/** @type {MessageEvent<WorkerRequest>} */ e) => {
     let node = null;
     const nodeMap = graph.nodeMap;  /** @type {Map<string, Node>} */
     if (payload && payload.name) {
-      console.log('Received message: ', type, ' ', payload.name);
       node = nodeMap.get(payload.name);
-    } else {
-      console.log('Received message: ', type);
     }
     switch (type) {
       case 'createNode': {

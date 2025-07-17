@@ -24,7 +24,6 @@ export class TextMatrix {
    */
   update(values, gradients) {
     const { width, height } = this.spec;
-    console.log(`Width: ${width}, Height: ${height}`);
 
     const table = document.createElement('table');
     table.style.borderCollapse = 'collapse';

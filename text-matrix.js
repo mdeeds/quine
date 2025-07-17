@@ -29,6 +29,10 @@ export class TextMatrix {
     table.style.borderCollapse = 'collapse';
     table.style.fontFamily = 'monospace';
 
+    if (values.length != this.spec.width * this.spec.height) {
+      throw new Error(`Size mismatch: ${values.length} != ${this.spec.width * this.spec.height}`);
+    }
+
     for (let r = 0; r < height; r++) {
       const tr = table.insertRow();
       for (let c = 0; c < width; c++) {

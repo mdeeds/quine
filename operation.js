@@ -83,30 +83,24 @@ export class FullyConnectedOperation extends Operation {
    * Creates a fully connected layer: 
    * Y = XW + B
    * @param {Gpu!} gpu 
-   * @param {LogicalMatrix!} x
-   * @param {LogicalMatrix!} w 
-   * @param {LogicalMatrix!} b 
-   * @param {LogicalMatrix!} y 
-   * @param {LogicalMatrix!} dx 
-   * @param {LogicalMatrix!} dw 
-   * @param {LogicalMatrix!} db 
-   * @param {LogicalMatrix!} dy
+   * @param {{x: LogicalMatrix!, w: LogicalMatrix!, b: LogicalMatrix!, y: LogicalMatrix!}} values
+   * @param {{dx: LogicalMatrix!, dw: LogicalMatrix!, db: LogicalMatrix!, dy: LogicalMatrix!}} gradients
    */
-  constructor(gpu, x, w, b, y, dx, dw, db, dy) {
+  constructor(gpu, values, gradients) {
     super();
     this.gpu = gpu;
-    this.x = x;
-    this.w = w;
-    this.b = b;
-    this.y = y;
-    this.dx = dx;
-    this.dw = dw;
-    this.db = db;
-    this.dy = dy;
+    this.x = values.x;
+    this.w = values.w;
+    this.b = values.b;
+    this.y = values.y;
+    this.dx = gradients.dx;
+    this.dw = gradients.dw;
+    this.db = gradients.db;
+    this.dy = gradients.dy;
   }
 
   forward() {
-    this.gpu.executeMatrixMultiplyAddBias(this.x, this.w, this.b, this.y);
+    this.gpu.executeMatrixMultiplyAddBias({ x: this.x, w: this.w, b: this.b, y: this.y });
   }
 
   backward() {
@@ -123,12 +117,9 @@ export class ReluOperation extends Operation {
   /**
    * Y = RELU(X)
    * @param {Gpu!} gpu 
-   * @param {LogicalMatrix!} x 
-   * @param {LogicalMatrix!} y 
-   * @param {LogicalMatrix!} dx 
-   * @param {LogicalMatrix!} dy 
+   * @param {{x: LogicalMatrix!, y: LogicalMatrix!, dx: LogicalMatrix!, dy: LogicalMatrix!}} args
    */
-  constructor(gpu, x, y, dx, dy) {
+  constructor(gpu, { x, y, dx, dy }) {
     super();
     this.gpu = gpu;
     this.x = x;

@@ -4,6 +4,7 @@ import { Gpu } from './gpu.js';
 import { LogicalMatrix } from './matrix.js';
 import { FullyConnectedOperation, ReluOperation } from './operation.js';
 /** @typedef {import('./worker/api.js').MatrixSpec} MatrixSpec */
+/** @typedef {import('./worker/api.js').ComponentDescription} ComponentDescription */
 
 /**
  * @typedef {Connection | Node} ConnectionOrNode
@@ -65,7 +66,7 @@ export class Graph {
       throw new Error("Invalid node name.");
     }
 
-    const connection = new MultiplyAdd(this.gpu, xNode, wNode, bNode, yNode);
+    const connection = new MultiplyAdd(this.gpu, { x: xNode, w: wNode, b: bNode, y: yNode });
     this.components.push(connection);
     this.allConnections.add(connection);
     this.dependencies.push({ source: xNode, target: connection });
@@ -295,15 +296,12 @@ export class MultiplyAdd extends Connection {
   /**
    * Arranges y = wx + b in the graph.
    * @param {Gpu!} gpu
-   * @param {Node!} x 
-   * @param {Node!} w 
-   * @param {Node!} b 
-   * @param {Node!} y 
+   * @param {{x: Node!, w: Node!, b: Node!, y: Node!}} args 
    */
-  constructor(gpu, x, w, b, y) {
+  constructor(gpu, { x, w, b, y }) {
     super(new FullyConnectedOperation(gpu,
-      x.value, w.value, b.value, y.value,
-      x.gradient, w.gradient, b.gradient, y.gradient));
+      { x: x.value, w: w.value, b: b.value, y: y.value },
+      { dx: x.gradient, dw: w.gradient, db: b.gradient, dy: y.gradient }));
     this.w = w;
     this.x = x;
     this.b = b;
@@ -317,7 +315,7 @@ export class MultiplyAdd extends Connection {
 
 export class Relu extends Connection {
   constructor(gpu, x, y) {
-    super(new ReluOperation(gpu, x.value, y.value, x.gradient, y.gradient));
+    super(new ReluOperation(gpu, { x: x.value, y: y.value, dx: x.gradient, dy: y.gradient }));
     this.x = x;
     this.y = y;
   }

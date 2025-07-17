@@ -23,8 +23,8 @@ void main() {
     // texCoord.x maps to column, texCoord.y maps to row
     // Output matrix C has dimensions B_width x A_height
     // Do not subtract 0.5 here for the half-texel offset; trunc does the right thing.
-    int rowC = int(texCoord.y * float(A_height));
     int colC = int(texCoord.x * float(B_width)); 
+    int rowC = int(texCoord.y * float(A_height));
 
     float sum = 0.0;
     int B_height = A_width;

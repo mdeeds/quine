@@ -28,8 +28,8 @@ void main() {
     // texCoord.x maps to column, texCoord.y maps to row
     // Output matrix C has dimensions B_width x A_height
     // Texel will be 0.5 larger than the row.  We truncate, so this will remove the 0.5 offset.
-    int rowC = int(texCoord.y * float(C_height));
     int colC = int(texCoord.x * float(C_width));
+    int rowC = int(texCoord.y * float(C_height));
 
     float sum = 0.0;
 

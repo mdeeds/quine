@@ -28,9 +28,9 @@ void main() {
   // Determine the current row and column of the output matrix Y
   // texCoord.x maps to column, texCoord.y maps to row
   // Output matrix Y has dimensions X_width x W_height
-  // Subtract 0.5 here for the half-texel offset
-  int rowY = int(texCoord.y * float(W_height) - 0.5);
-  int colY = int(texCoord.x * float(X_width) - 0.5); 
+  // Do not subtract 0.5 here for the half-texel offset; trunc does the right thing.
+  int colY = int(texCoord.x * float(W_width)); 
+  int rowY = int(texCoord.y * float(X_height));
 
   // Pre-calculate the increments for the texture coordinates to avoid division in the loop.
   // d_texCoordX corresponds to moving 1 step in k (the y-direction for matrix X).

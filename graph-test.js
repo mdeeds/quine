@@ -206,9 +206,11 @@ class GraphTest {
 
     graph.postMessage({
       type: 'setValues', payload: {
-        name: 'X', values: [  // 2x4
-          0, 1, 0, 1, // row 1
-          0, 0, 1, 1] // row 2
+        name: 'X', values: [  // 4x2
+          0, 0,
+          0, 1,
+          1, 0,
+          1, 1]
       }
     });
 
@@ -221,19 +223,40 @@ class GraphTest {
     loss(graph, { actual: 'Y', expected: 'Expected' });
 
     this.graph = graph;
-    const b = document.createElement('button');
-    b.innerText = 'Run';
-    b.onclick = this.run.bind(this);
-    document.body.appendChild(b);
+    {
+      const b = document.createElement('button');
+      b.innerText = 'Forward';
+      b.onclick = this.runForward.bind(this);
+      document.body.appendChild(b);
+    }
+    {
+      const b = document.createElement('button');
+      b.innerText = 'Backward';
+      b.onclick = this.runBackward.bind(this);
+      document.body.appendChild(b);
+    }
     this.run();
   }
 
   async run() {
+    await this.runForward();
+    await this.runBackward();
+  }
+  async runForward() {
     const graph = this.graph;
     if (!graph) {
       throw new Error('Graph worker not initialized.');
     }
     graph.postMessage({ type: 'forward' });
+    finish(graph);
+
+    await displayAllNodes(graph);
+  }
+  async runBackward() {
+    const graph = this.graph;
+    if (!graph) {
+      throw new Error('Graph worker not initialized.');
+    }
     graph.postMessage({ type: 'backwardAndAddGradient', payload: { learningRate: 0.05 } });
     finish(graph);
 

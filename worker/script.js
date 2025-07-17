@@ -62,6 +62,9 @@ self.onmessage = (/** @type {MessageEvent<WorkerRequest>} */ e) => {
       case 'loss':
         graph.loss(payload);
         break;
+      case 'relu':
+        graph.relu(payload);
+        break;
       case 'setValues':
         if (!node) {
           throw new Error(`Node with name ${payload.name} not found.`);

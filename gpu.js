@@ -129,16 +129,13 @@ export class Gpu {
 
   /**
    * Executes y = wx + b
-   * @param {LogicalMatrix!} x
-   * @param {LogicalMatrix!} w
-   * @param {LogicalMatrix!} b 
-   * @param {LogicalMatrix!} y 
+   * @param {{x: LogicalMatrix!, w:LogicalMatrix!, b:LogicalMatrix!, y:LogicalMatrix!}} args
    */
-  executeMatrixMultiplyAddBias(x, w, b, y) {
+  executeMatrixMultiplyAddBias({ x, w, b, y }) {
     if (!this.mmab_program) {
       throw new Error('Matrix multiply and add bias program not initialized.');
     }
-    this.mmab_program.execute(x, w, b, y);
+    this.mmab_program.execute({ x, w, b, y });
   }
 
   executeLoss({ expected, actual, dLoss }) {
@@ -463,12 +460,9 @@ class _MatrixMultiplyAddBiasProgram {
 
   /**
    * 
-   * @param {LogicalMatrix!} x 
-   * @param {LogicalMatrix!} w 
-   * @param {LogicalMatrix!} b 
-   * @param {LogicalMatrix!} y 
+   * @param {{x: LogicalMatrix!, w: LogicalMatrix!, b:LogicalMatrix!, y: LogicalMatrix!}} args
    */
-  execute(x, w, b, y) {
+  execute({ x, w, b, y }) {
     // y = xw + b
     if (x.width !== w.height) {
       throw new Error(`Matrix dimension mismatch: W's width (${x.width}) must equal X's height (${w.height}).`);
@@ -492,7 +486,7 @@ class _MatrixMultiplyAddBiasProgram {
 
     gl.uniform1i(this.xWidth_Loc, x.width);
     gl.uniform1i(this.xHeight_Loc, x.height);
-    gl.uniform1i(this.wWidth_Loc, y.width);
+    gl.uniform1i(this.wWidth_Loc, w.width);
 
     // Bind the single, reusable FBO and attach the destination texture.
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
@@ -505,14 +499,14 @@ class _MatrixMultiplyAddBiasProgram {
       throw new Error('Framebuffer not complete after attaching texture: ' + fboStatus);
     }
 
-    // Activate textures and assign uniforms
-    gl.activeTexture(gl.TEXTURE0); // w
-    gl.bindTexture(gl.TEXTURE_2D, w.texture);
-    gl.uniform1i(this.matrixW_Loc, 0);
-
-    gl.activeTexture(gl.TEXTURE1); // x
+    gl.activeTexture(gl.TEXTURE0); // x
     gl.bindTexture(gl.TEXTURE_2D, x.texture);
-    gl.uniform1i(this.matrixX_Loc, 1);
+    gl.uniform1i(this.matrixX_Loc, 0);
+
+    // Activate textures and assign uniforms
+    gl.activeTexture(gl.TEXTURE1); // w
+    gl.bindTexture(gl.TEXTURE_2D, w.texture);
+    gl.uniform1i(this.matrixW_Loc, 1);
 
     gl.activeTexture(gl.TEXTURE2); // b
     gl.bindTexture(gl.TEXTURE_2D, b.texture);

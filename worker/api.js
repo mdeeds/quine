@@ -14,3 +14,10 @@ export { };
  * @property {string} type Either 'node' or 'operation'.
  * @property {string} detail A detail string describing the component.
  */
+
+/**
+ * @typedef {object} MatrixSpec
+ * @property {number} width
+ * @property {number} height
+ * @property {string!} nodeType
+ */

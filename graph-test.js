@@ -1,5 +1,7 @@
 // @ts-check
 
+import { TextMatrix } from './text-matrix.js';
+
 /**
  * 
  * @param {Worker} graph 
@@ -72,6 +74,26 @@ async function getValues(graph, name) {
     graph.postMessage({ type: 'getValues', payload: { name } });
   });
 }
+
+/**
+ * 
+ */
+async function getSpec(graph, name) {
+  return new Promise((resolve, reject) => {
+    const messageHandler = (/** @type {{ data: { type: string; payload: any; }; }} */ e) => {
+      const { type, payload } = e.data;
+      // We only care about the response to our specific request.
+      // TODO: More robust is to pass an id into the message and wait for that id in the response.
+      if (type === 'getSpec') {
+        graph.removeEventListener('message', messageHandler); // Detach handler
+        resolve(payload.spec);
+      }
+    }
+    graph.addEventListener('message', messageHandler);
+    graph.postMessage({ type: 'getSpec', payload: { name } });
+  });
+}
+
 /**
  * 
  * @param {Worker} graph 
@@ -117,9 +139,9 @@ async function finish(graph) {
 
 async function displayAllNodes(graph) {
   const d = document.getElementById('output');
-  if (!d) { throw new Error('Output div not found.') }
-  d.innerHTML = '';
-
+  if (!d) {
+    throw new Error('Output div not found.');
+  }
   const components = await getComponentsInBuildOrder(graph);
   for (const component of components) {
     console.log(component);
@@ -129,87 +151,103 @@ async function displayAllNodes(graph) {
   }
 }
 
+const textMatrixMap = new Map();
 async function addNodeInfo(graph, nodeName, container) {
+  let textMatrix = textMatrixMap.get(nodeName);
+  if (!textMatrix) {
+    const spec = await getSpec(graph, nodeName);
+    console.log('Spec:', spec);
+    textMatrix = new TextMatrix(spec);
+    textMatrixMap.set(nodeName, textMatrix);
+    container.appendChild(textMatrix.div);
+  }
   const { values, gradients } = await getValues(graph, nodeName);
-  const d = document.createElement('div');
-  d.classList.add('node');
-  d.innerText = nodeName + ':\nValues' + JSON.stringify(values) + '\nGradients' + JSON.stringify(gradients) + '\n\n';
-  container.appendChild(d);
+  textMatrix.update(values, gradients);
+  console.log('AAAAA');
+  return;
+}
+
+class GraphTest {
+  constructor() {
+    this.init();
+  }
+
+  async init() {
+    console.log('Initializing...');
+    const graph = new Worker('worker/script.js', { type: 'module' });
+    await waitForReady(graph);
+
+    console.log('Constructing graph...');
+
+    // Construct a simple two-layer net.
+
+    // Y1 = W1 X + B1
+    // Y = W2 Y1 + B2
+
+    const batchSize = 4;
+    const inputSize = 2;  // 2 values per sample
+    const hiddenSize = 3;
+    const outputSize = 1;  // 1 value per output
+
+    createNode(graph, 'X', { height: batchSize, width: inputSize, nodeType: 'input' });
+    createNode(graph, 'W1', { height: inputSize, width: hiddenSize, nodeType: 'train' });
+    createNode(graph, 'B1', { height: 1, width: hiddenSize, nodeType: 'train' });
+    createNode(graph, 'Y1', { height: batchSize, width: hiddenSize, nodeType: 'intermediate' });
+
+    multiplyAdd(graph, 'X', 'W1', 'B1', 'Y1');
+
+    createNode(graph, 'R1', { height: batchSize, width: hiddenSize, nodeType: 'intermediate' });
+    graph.postMessage({ type: 'relu', payload: { x: 'Y1', y: 'R1' } });
+
+    createNode(graph, 'W2', { height: hiddenSize, width: outputSize, nodeType: 'train' });
+    createNode(graph, 'B2', { height: outputSize, width: 1, nodeType: 'train' });
+    createNode(graph, 'Y2', { height: batchSize, width: outputSize, nodeType: 'intermediate' });
+
+    multiplyAdd(graph, 'Y1', 'W2', 'B2', 'Y2');
+    createNode(graph, 'Y', { height: batchSize, width: outputSize, nodeType: 'output' });
+    graph.postMessage({ type: 'relu', payload: { x: 'Y2', y: 'Y' } });
+
+    graph.postMessage({
+      type: 'setValues', payload: {
+        name: 'X', values: [  // 2x4
+          0, 1, 0, 1, // row 1
+          0, 0, 1, 1] // row 2
+      }
+    });
+
+    createNode(graph, 'Expected', { height: batchSize, width: outputSize, nodeType: 'output' });
+    graph.postMessage({
+      type: 'setValues', payload: { name: 'Expected', values: [0, 1, 1, 0] }
+    });
+
+
+    loss(graph, { actual: 'Y', expected: 'Expected' });
+
+    this.graph = graph;
+    const b = document.createElement('button');
+    b.innerText = 'Run';
+    b.onclick = this.run.bind(this);
+    document.body.appendChild(b);
+    this.run();
+  }
+
+  async run() {
+    const graph = this.graph;
+    if (!graph) {
+      throw new Error('Graph worker not initialized.');
+    }
+    graph.postMessage({ type: 'forward' });
+    graph.postMessage({ type: 'backwardAndAddGradient', payload: { learningRate: 0.05 } });
+    finish(graph);
+
+    await displayAllNodes(graph);
+  }
+
 }
 
 async function init() {
-  console.log('Initializing...');
-  const graph = new Worker('worker/script.js', { type: 'module' });
-  await waitForReady(graph);
-
-  console.log('Constructing graph...');
-
-  // Construct a simple two-layer net.
-
-  // Y1 = W1 X + B1
-  // Y = W2 Y1 + B2
-
-  const batchSize = 4;
-  const inputSize = 2;  // 2 values per sample
-  const hiddenSize = 3;
-  const outputSize = 1;  // 1 value per output
-
-  createNode(graph, 'X', { height: batchSize, width: inputSize, nodeType: 'input' });
-  createNode(graph, 'W1', { height: inputSize, width: hiddenSize, nodeType: 'train' });
-  createNode(graph, 'B1', { height: 1, width: hiddenSize, nodeType: 'train' });
-  createNode(graph, 'Y1', { height: batchSize, width: hiddenSize, nodeType: 'intermediate' });
-
-  multiplyAdd(graph, 'X', 'W1', 'B1', 'Y1');
-
-  createNode(graph, 'R1', { height: batchSize, width: hiddenSize, nodeType: 'intermediate' });
-  graph.postMessage({ type: 'relu', payload: { x: 'Y1', y: 'R1' } });
-
-  createNode(graph, 'W2', { height: hiddenSize, width: outputSize, nodeType: 'train' });
-  createNode(graph, 'B2', { height: outputSize, width: 1, nodeType: 'train' });
-  createNode(graph, 'Y2', { height: batchSize, width: outputSize, nodeType: 'intermediate' });
-
-  multiplyAdd(graph, 'Y1', 'W2', 'B2', 'Y2');
-  createNode(graph, 'Y', { height: batchSize, width: outputSize, nodeType: 'output' });
-  graph.postMessage({ type: 'relu', payload: { x: 'Y2', y: 'Y' } });
-
-  graph.postMessage({
-    type: 'setValues', payload: {
-      name: 'X', values: [  // 2x4
-        0, 1, 0, 1, // row 1
-        0, 0, 1, 1] // row 2
-    }
-  });
-
-  createNode(graph, 'Expected', { height: batchSize, width: outputSize, nodeType: 'output' });
-  graph.postMessage({
-    type: 'setValues', payload: { name: 'Expected', values: [0, 1, 1, 0] }
-  });
-
-
-  loss(graph, { actual: 'Y', expected: 'Expected' });
-
-  graph.postMessage({ type: 'forward' });
-  graph.postMessage({ type: 'backwardAndAddGradient', payload: { learningRate: 0.05 } });
-
-  {
-    const { values, gradients } = await getValues(graph, 'Y');
-    console.log('Values:', values);
-    console.log('Gradients:', gradients);
-  }
-
-  await displayAllNodes(graph);
-
-
-  {
-    const { values, gradients } = await getValues(graph, 'Y');
-    console.log('Values:', values);
-    console.log('Gradients:', gradients);
-  }
-  {
-    const { values, gradients } = await getValues(graph, 'Expected');
-    console.log('Values:', values);
-    console.log('Gradients:', gradients);
-  }
+  new GraphTest();
 }
+
 
 document.addEventListener('DOMContentLoaded', () => { init(); });

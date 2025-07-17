@@ -147,3 +147,15 @@ export class LogicalMatrix {
     return data;
   }
 }
+
+export class MatrixPair {
+  /**
+   * 
+   * @param {LogicalMatrix} value 
+   * @param {LogicalMatrix} gradient 
+   */
+  constructor(value, gradient) {
+    this.value = value;
+    this.gradient = gradient;
+  }
+}

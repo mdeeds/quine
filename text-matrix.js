@@ -1,0 +1,47 @@
+// @ts-check
+
+export class TextMatrix {
+
+  /**
+   * 
+   * @param {import('./worker/api.js').MatrixSpec!} spec 
+   */
+  constructor(spec) {
+    this.spec = spec;
+    this.div = document.createElement('div');
+    this.div.style.margin = '3px';
+    this.div.style.border = '1px solid black';
+    this.div.style.display = 'inline-block'; // Make div only as large as its content
+  }
+
+  // Updates the displayed matrix in this.div with values from this.matrix.
+  /**
+   * 
+   * @param {Float32Array} values 
+   * @param {Float32Array} gradients 
+   */
+  update(values, gradients) {
+    const { width, height } = this.spec;
+    console.log(`Width: ${width}, Height: ${height}`);
+
+    const table = document.createElement('table');
+    table.style.borderCollapse = 'collapse';
+    table.style.fontFamily = 'monospace';
+
+    for (let r = 0; r < height; r++) {
+      const tr = table.insertRow();
+      for (let c = 0; c < width; c++) {
+        const td = tr.insertCell();
+        const value = values[r * width + c];
+        td.textContent = value.toFixed(3);
+        td.style.border = '1px solid #ccc';
+        td.style.padding = '4px 8px';
+        td.style.textAlign = 'right';
+      }
+    }
+
+    // Clear previous content before appending the new table.
+    this.div.innerHTML = '';
+    this.div.appendChild(table);
+  }
+}

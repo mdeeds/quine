@@ -900,7 +900,6 @@ class _MulStepProgram {
     gl.bindTexture(gl.TEXTURE_2D, b.texture);
     gl.uniform1i(this.matrixB_Loc, 1); // texture unit 1
 
-
     // Bind the single, reusable FBO and attach the destination texture.
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, y.texture, 0);

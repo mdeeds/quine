@@ -3,13 +3,7 @@
 import { Gpu } from './gpu.js';
 import { LogicalMatrix } from './matrix.js';
 import { FullyConnectedOperation, ReluOperation } from './operation.js';
-
-/**
- * @typedef {object} MatrixSpec
- * @property {number} width
- * @property {number} height
- * @property {string!} nodeType
- */
+/** @typedef {import('./worker/api.js').MatrixSpec} MatrixSpec */
 
 /**
  * @typedef {Connection | Node} ConnectionOrNode
@@ -48,7 +42,6 @@ export class Graph {
     if (this.nodeMap.has(name)) {
       throw new Error(`Node with name ${name} already exists.`);
     }
-    this.nodeMap.set(name, spec)
     const node = new Node(this.gpu, name, spec);
     this.components.push(node);
     this.allNodes.add(node);

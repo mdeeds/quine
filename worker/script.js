@@ -40,9 +40,10 @@ self.onmessage = (/** @type {MessageEvent<WorkerRequest>} */ e) => {
     let failed = false;
     /** @type {Node! | null} */
     let node = null;
+    const nodeMap = graph.nodeMap;  /** @type {Map<string, Node>} */
     if (payload && payload.name) {
       console.log('Received message: ', type, ' ', payload.name);
-      node = graph.nodeMap.get(payload.name);
+      node = nodeMap.get(payload.name);
     } else {
       console.log('Received message: ', type);
     }
@@ -90,6 +91,16 @@ self.onmessage = (/** @type {MessageEvent<WorkerRequest>} */ e) => {
         self.postMessage(
           { type: 'getValues', payload: { values, gradients } },
           [values.buffer, gradients.buffer]);
+        break;
+      case 'getSpec':
+        if (!node) {
+          throw new Error(`Node with name ${payload.name} not found.`);
+        }
+        const spec = node.spec;
+        self.postMessage(
+          { type: 'getSpec', payload: { spec } }
+          // No need to transfer spec since it's just an object.
+        );
         break;
       case 'finish':
         gpu.context.gl.finish();

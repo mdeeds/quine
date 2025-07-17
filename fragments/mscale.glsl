@@ -24,7 +24,7 @@ float rand(float x) {
 
 void main() {
   float a = alpha * texture(matrixA, texCoord).r;
-  float noise = r * rand(t + texCord.x + texCoord.y);
+  float noise = r * rand(t + texCoord.x + texCoord.y);
 
   fragColor = vec4(a + noise, 0.0, 0.0, 1.0);
 }

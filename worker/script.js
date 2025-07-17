@@ -44,6 +44,12 @@ self.onmessage = (/** @type {MessageEvent<WorkerRequest>} */ e) => {
     if (payload && payload.name) {
       node = nodeMap.get(payload.name);
     }
+    if (node) {
+      console.log(`Command ${type} received for node ${node.name}`)
+    } else {
+      console.log(`Command ${type} received.`);
+    }
+    const requestId = (e.data && e.data.requestId) ? e.data.requestId : undefined;
     switch (type) {
       case 'createNode': {
         graph.createNode(payload.name, payload.spec);
@@ -78,7 +84,8 @@ self.onmessage = (/** @type {MessageEvent<WorkerRequest>} */ e) => {
         for (const component of components) {
           componentNames.push(component.getDescription());
         }
-        self.postMessage({ type: 'getComponentsInBuildOrder', payload: { componentNames } });
+        console.log(`Responding on request Id ${requestId} with ${componentNames.length} components.`);
+        self.postMessage({ type: 'getComponentsInBuildOrder', payload: { componentNames }, requestId });
         break;
       case 'getValues':
         if (!node) {
@@ -89,7 +96,7 @@ self.onmessage = (/** @type {MessageEvent<WorkerRequest>} */ e) => {
         // console.log('Values:', values);
         // console.log('Gradients:', gradients);
         self.postMessage(
-          { type: 'getValues', payload: { values, gradients } },
+          { type: 'getValues', payload: { values, gradients }, requestId },
           [values.buffer, gradients.buffer]);
         break;
       case 'getSpec':
@@ -98,22 +105,22 @@ self.onmessage = (/** @type {MessageEvent<WorkerRequest>} */ e) => {
         }
         const spec = node.spec;
         self.postMessage(
-          { type: 'getSpec', payload: { spec } }
+          { type: 'getSpec', payload: { spec }, requestId }
           // No need to transfer spec since it's just an object.
         );
         break;
       case 'finish':
         gpu.context.gl.finish();
-        self.postMessage({ type: 'finish' });
+        self.postMessage({ type: 'finish', requestId });
         break;
 
       default:
         console.warn(`Unknown message type received in worker: ${type}`);
-        self.postMessage({ type: 'error', payload: { message: `Unknown command: ${type}` } });
+        self.postMessage({ type: 'error', payload: { message: `Unknown command: ${type}` }, requestId });
         failed = true;
     }
     if (!failed) {
-      self.postMessage({ type: 'done', payload: { type } });
+      self.postMessage({ type: 'done', payload: { type }, requestId });
     }
 
   } catch (error) {

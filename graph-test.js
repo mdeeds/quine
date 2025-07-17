@@ -2,6 +2,8 @@
 
 import { TextMatrix } from './text-matrix.js';
 
+let uid = 1;
+
 /**
  * 
  * @param {Worker} graph 
@@ -38,18 +40,18 @@ function loss(graph, { actual, expected }) {
 }
 
 async function getComponentsInBuildOrder(graph) {
+  const expectedRequestId = uid++;
   return new Promise((resolve, reject) => {
-    const messageHandler = (/** @type {{ data: { type: string; payload: any; }; }} */ e) => {
-      const { type, payload } = e.data;
+    const messageHandler = (/** @type {{ data: { type: string; payload: any; requestId: number}; }} */ e) => {
+      const { type, payload, requestId } = e.data;
       // We only care about the response to our specific request.
       // TODO: More robust is to pass an id into the message and wait for that id in the response.
-      if (type === 'getComponentsInBuildOrder') {
-        graph.removeEventListener('message', messageHandler); // Detach handler
+      if (type === 'getComponentsInBuildOrder' && requestId === expectedRequestId) {
         resolve(payload.componentNames);
       }
     }
     graph.addEventListener('message', messageHandler);
-    graph.postMessage({ type: 'getComponentsInBuildOrder' });
+    graph.postMessage({ type: 'getComponentsInBuildOrder', requestId: expectedRequestId });
   });
 }
 
@@ -60,18 +62,16 @@ async function getComponentsInBuildOrder(graph) {
  * @returns {Promise<{values: Float32Array!, gradients: Float32Array!}>}
  */
 async function getValues(graph, name) {
+  const expectedRequestId = uid++;
   return new Promise((resolve, reject) => {
-    const messageHandler = (/** @type {{ data: { type: string; payload: any; }; }} */ e) => {
-      const { type, payload } = e.data;
-      // We only care about the response to our specific request.
-      // TODO: More robust is to pass an id into the message and wait for that id in the response.
-      if (type === 'getValues') {
-        graph.removeEventListener('message', messageHandler); // Detach handler
+    const messageHandler = (/** @type {{ data: { type: string; payload: any; requestId: number}; }} */ e) => {
+      const { type, payload, requestId } = e.data;
+      if (type === 'getValues' && requestId === expectedRequestId) {
         resolve(payload);
       }
     }
     graph.addEventListener('message', messageHandler);
-    graph.postMessage({ type: 'getValues', payload: { name } });
+    graph.postMessage({ type: 'getValues', payload: { name }, requestId: expectedRequestId });
   });
 }
 
@@ -79,18 +79,16 @@ async function getValues(graph, name) {
  * 
  */
 async function getSpec(graph, name) {
+  const expectedRequestId = uid++;
   return new Promise((resolve, reject) => {
-    const messageHandler = (/** @type {{ data: { type: string; payload: any; }; }} */ e) => {
-      const { type, payload } = e.data;
-      // We only care about the response to our specific request.
-      // TODO: More robust is to pass an id into the message and wait for that id in the response.
-      if (type === 'getSpec') {
-        graph.removeEventListener('message', messageHandler); // Detach handler
+    const messageHandler = (/** @type {{ data: { type: string; payload: any; requestId: number}; }} */ e) => {
+      const { type, payload, requestId } = e.data;
+      if (type === 'getSpec' && requestId === expectedRequestId) {
         resolve(payload.spec);
       }
     }
     graph.addEventListener('message', messageHandler);
-    graph.postMessage({ type: 'getSpec', payload: { name } });
+    graph.postMessage({ type: 'getSpec', payload: { name }, requestId: expectedRequestId });
   });
 }
 
@@ -100,14 +98,12 @@ async function getSpec(graph, name) {
  * @returns {Promise<void>}
  */
 async function waitForReady(graph) {
+  // waitForReady does not post a message and needs no requestId.
   return new Promise((resolve, reject) => {
-    const messageHandler = (/** @type {{ data: { type: string; payload: any; }; }} */ e) => {
-      const { type, payload } = e.data;
-      // We only care about the response to our specific request.
-      // TODO: More robust is to pass an id into the message and wait for that id in the response.
+    const messageHandler = (/** @type {{ data: { type: string; payload: any; requestId: number}; }} */ e) => {
+      const { type } = e.data;
       if (type === 'ready') {
-        graph.removeEventListener('message', messageHandler); // Detach handler
-        console.log('Worker is ready.');
+        console.log('Ready!');
         resolve();
       }
     }
@@ -121,19 +117,16 @@ async function waitForReady(graph) {
  * @returns {Promise<void>}
  */
 async function finish(graph) {
+  const expectedRequestId = uid++;
   return new Promise((resolve, reject) => {
-    const messageHandler = (/** @type {{ data: { type: string; payload: any; }; }} */ e) => {
-      const { type } = e.data;
-      // We only care about the response to our specific request.
-      // TODO: More robust is to pass an id into the message and wait for that id in the response.
-      if (type === 'finish') {
-        graph.removeEventListener('message', messageHandler); // Detach handler
-        console.log('Worker finished.');
+    const messageHandler = (/** @type {{ data: { type: string; payload: any; requestId: number}; }} */ e) => {
+      const { type, payload, requestId } = e.data;
+      if (type === 'finish' && requestId === expectedRequestId) {
         resolve();
       }
     }
     graph.addEventListener('message', messageHandler);
-    graph.postMessage({ type: 'finish' });
+    graph.postMessage({ type: 'finish', requestId: expectedRequestId });
   });
 }
 

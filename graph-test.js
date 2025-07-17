@@ -157,7 +157,7 @@ async function addNodeInfo(graph, nodeName, container) {
   if (!textMatrix) {
     const spec = await getSpec(graph, nodeName);
     console.log('Spec:', spec);
-    textMatrix = new TextMatrix(spec);
+    textMatrix = new TextMatrix(nodeName, spec);
     textMatrixMap.set(nodeName, textMatrix);
     container.appendChild(textMatrix.div);
   }

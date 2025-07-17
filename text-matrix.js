@@ -4,9 +4,11 @@ export class TextMatrix {
 
   /**
    * 
+   * @param {string!} name
    * @param {import('./worker/api.js').MatrixSpec!} spec 
    */
-  constructor(spec) {
+  constructor(name, spec) {
+    this.name = name;
     this.spec = spec;
     this.div = document.createElement('div');
     this.div.style.margin = '3px';
@@ -41,7 +43,7 @@ export class TextMatrix {
     }
 
     // Clear previous content before appending the new table.
-    this.div.innerHTML = '';
+    this.div.innerHTML = `<span>${this.name}</span>:<span>${this.spec.nodeType}</span}`;
     this.div.appendChild(table);
   }
 }

@@ -44,11 +44,11 @@ self.onmessage = (/** @type {MessageEvent<WorkerRequest>} */ e) => {
     if (payload && payload.name) {
       node = nodeMap.get(payload.name);
     }
-    if (node) {
-      console.log(`Command ${type} received for node ${node.name}`)
-    } else {
-      console.log(`Command ${type} received.`);
-    }
+    // if (node) {
+    //   console.log(`Command ${type} received for node ${node.name}`)
+    // } else {
+    //   console.log(`Command ${type} received.`);
+    // }
     const requestId = (e.data && e.data.requestId) ? e.data.requestId : undefined;
     switch (type) {
       case 'createNode': {
@@ -90,7 +90,7 @@ self.onmessage = (/** @type {MessageEvent<WorkerRequest>} */ e) => {
         for (const component of components) {
           componentNames.push(component.getDescription());
         }
-        console.log(`Responding on request Id ${requestId} with ${componentNames.length} components.`);
+        // console.log(`Responding on request Id ${requestId} with ${componentNames.length} components.`);
         self.postMessage({ type: 'getComponentsInBuildOrder', payload: { componentNames }, requestId });
         break;
       case 'getValues':

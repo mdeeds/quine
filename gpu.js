@@ -697,7 +697,7 @@ class _MatrixLossProgram {
         `and Loss (${dLoss.width}x${dLoss.height}).`);
     }
 
-    console.log(`Executing matrix loss program`);
+    // console.log(`Executing matrix loss program`);
     const gl = this.context.gl;
     gl.useProgram(this.program);
     gl.disable(gl.BLEND);

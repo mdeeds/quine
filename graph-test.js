@@ -228,6 +228,12 @@ class GraphTest {
       b.onclick = this.runBackward.bind(this);
       document.body.appendChild(b);
     }
+    {
+      const b = document.createElement('button');
+      b.innerText = 'run 10x';
+      b.onclick = this.runX.bind(this, 10);
+      document.body.appendChild(b);
+    }
     this.run();
   }
 
@@ -235,6 +241,7 @@ class GraphTest {
     await this.runForward();
     await this.runBackward();
   }
+
   async runForward() {
     const graph = this.graph;
     if (!graph) {
@@ -253,6 +260,19 @@ class GraphTest {
     graph.postMessage({ type: 'backwardAndAddGradient', payload: { learningRate: 0.05 } });
     finish(graph);
 
+    await displayAllNodes(graph);
+  }
+
+  async runX(n) {
+    const graph = this.graph;
+    if (!graph) {
+      throw new Error('Graph worker not initialized.');
+    }
+    for (let i = 0; i < n; i++) {
+      graph.postMessage({ type: 'forward' });
+      graph.postMessage({ type: 'backwardAndAddGradient', payload: { learningRate: 0.05 } });
+    }
+    finish(graph);
     await displayAllNodes(graph);
   }
 

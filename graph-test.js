@@ -66,14 +66,20 @@ class GraphTest {
     }
     {
       const b = document.createElement('button');
-      b.innerText = 'Backward';
-      b.onclick = graph.runBackward.bind(graph);
+      b.innerText = 'Calculate';
+      b.onclick = graph.calculateGradients.bind(graph);
       document.body.appendChild(b);
     }
     {
       const b = document.createElement('button');
-      b.innerText = 'run 10x';
-      b.onclick = graph.runX.bind(graph, 10);
+      b.innerText = 'Apply';
+      b.onclick = graph.applyGradients.bind(graph);
+      document.body.appendChild(b);
+    }
+    {
+      const b = document.createElement('button');
+      b.innerText = 'run 1000x';
+      b.onclick = graph.runX.bind(graph, 1000);
       document.body.appendChild(b);
     }
     await graph.displayAllNodes();

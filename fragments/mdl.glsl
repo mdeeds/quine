@@ -8,7 +8,7 @@ precision highp float; // Good practice for precision
 in vec2 texCoord; // Interpolated texture coordinate from the vertex shader
 
 ////////////////////////////////////
-// Y = atan(k(expected - actual)) / (PI/2)
+// Y = atan(k(actual - expected)) / (PI/2)
 // Computes the derivitive of the loss function (I.e. dL)
 // `k` is a parameter to adjust how sharp the point is around the origin.
 // Higher values are more sharp.
@@ -24,7 +24,7 @@ void main() {
   // Everything is the same shape, so we can use the texCoord varying directly.
   float expected = texture(matrixExpected, texCoord).r;
   float actual = texture(matrixActual, texCoord).r;
-  float error = expected - actual;
+  float error = actual - expected;
 
   fragColor = vec4(RECIP_HALF_PI * atan(error * k), 0.0, 0.0, 1.0);
 }

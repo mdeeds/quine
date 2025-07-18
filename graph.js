@@ -161,13 +161,8 @@ export class Graph {
     }
   }
 
-  /**
-   * This will clear all gradients from nodes unless they have isOutput set.
-   * Before calling this function, you should set the gradients on all of the output nodes.
-   * Gradients are applied to all nodes except for inputs and outputs.
-   * @param {number!} learningRate 
-   */
-  backwardAndAddGradient(learningRate) {
+
+  calculateGradient() {
     // Compute the loss and put the gradient into the output node.
     for (const { actual, expected } of this.lossPairs) {
       this.gpu.executeLoss(
@@ -203,13 +198,32 @@ export class Graph {
       if (this.allConnections.has(component)) {
         const connection = component;  /** @type {Connection} */
         connection.backward(); // Call the backward method if it exists
-      } else if (component['addGradient']) {
+      }
+    }
+  }
+
+  applyGradient(learningRate) {
+    const components = this.getComponentsInBuildOrder().reverse();
+    // Compute and apply the gradients
+    for (const component of components) {
+      if (!this.allConnections.has(component) && component['addGradient']) {
         const node = component;  /** @type {Node} */
         if (node.spec.nodeType === 'train') {
           node.addGradient(learningRate);
         }
       }
     }
+  }
+
+  /**
+   * This will clear all gradients from nodes unless they have isOutput set.
+   * Before calling this function, you should set the gradients on all of the output nodes.
+   * Gradients are applied to all nodes except for inputs and outputs.
+   * @param {number!} learningRate 
+   */
+  backwardAndAddGradient(learningRate) {
+    this.calculateGradient();
+    this.applyGradient(learningRate);
   }
 }
 

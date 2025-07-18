@@ -65,6 +65,12 @@ self.onmessage = (/** @type {MessageEvent<WorkerRequest>} */ e) => {
       case 'backwardAndAddGradient':
         graph.backwardAndAddGradient(payload.learningRate);
         break;
+      case 'calculateGradient':
+        graph.calculateGradient();
+        break;
+      case 'applyGradient':
+        graph.applyGradient(payload.learningRate);
+        break;
       case 'loss':
         graph.loss(payload);
         break;

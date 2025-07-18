@@ -163,17 +163,21 @@ export class GraphClient {
 
     await this.displayAllNodes();
   }
-  async runBackward() {
-    this.graph.postMessage({ type: 'backwardAndAddGradient', payload: { learningRate: 0.05 } });
+  async calculateGradients() {
+    this.graph.postMessage({ type: 'calculateGradient', payload: {} });
     this.finish();
-
+    await this.displayAllNodes();
+  }
+  async applyGradients() {
+    this.graph.postMessage({ type: 'applyGradient', payload: { learningRate: 0.01 } });
+    this.finish();
     await this.displayAllNodes();
   }
 
   async runX(n) {
     for (let i = 0; i < n; i++) {
       this.graph.postMessage({ type: 'forward' });
-      this.graph.postMessage({ type: 'backwardAndAddGradient', payload: { learningRate: 0.05 } });
+      this.graph.postMessage({ type: 'backwardAndAddGradient', payload: { learningRate: 0.01 } });
     }
     this.finish();
     await this.displayAllNodes();

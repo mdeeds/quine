@@ -182,16 +182,13 @@ export class Gpu {
   }
   /**
    * 
-   * @param {LogicalMatrix!} a
-   * @param {number!} k
-   * @param {LogicalMatrix!} b
-   * @param {LogicalMatrix!} y
+   * @param {{a: LogicalMatrix!, k: number!, b: LogicalMatrix!, y: LogicalMatrix!} } args
    */
-  executeMulStep(a, k, b, y) {
+  executeMulStep({ a, k, b, y }) {
     if (!this.mulstep_program) {
       throw new Error('Column sum program is not initialized');
     }
-    this.mulstep_program.execute(a, k, b, y);
+    this.mulstep_program.execute({ a, k, b, y });
   }
 
 
@@ -682,7 +679,7 @@ class _MatrixLossProgram {
     /** @type {WebGLProgram} */ this.program = program;
     this.context = context;
     const gl = context.gl;
-    this.k = 100.0;  // Pointiness factor.
+    this.k = 1.0;  // Pointiness factor.
 
     this.matrixExpected_Loc = gl.getUniformLocation(program, 'matrixExpected');
     this.matrixActual_Loc = gl.getUniformLocation(program, 'matrixActual');
@@ -871,12 +868,9 @@ class _MulStepProgram {
 
   /**
    * 
-   * @param {LogicalMatrix!} a 
-   * @param {number!} k 
-   * @param {LogicalMatrix!} b 
-   * @param {LogicalMatrix!} y 
+   * @param {{a: LogicalMatrix!, k: number!, b: LogicalMatrix!, y: LogicalMatrix! }} args
    */
-  execute(a, k, b, y) {
+  execute({ a, k, b, y }) {
     const gl = this.context.gl;
     const fbo = this.context.fbo;
     gl.useProgram(this.program);

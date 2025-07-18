@@ -1,0 +1,19 @@
+body {
+  font-family: sans-serif;
+}
+
+textarea {
+  width: 300px;
+  height: 80px;
+  font-family: monospace;
+}
+
+.node {
+  font-family: monospace;
+  white-space: pre-wrap;
+}
+
+.grad {
+  color: #666;
+  font-size: 80%;
+}

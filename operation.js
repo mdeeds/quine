@@ -135,6 +135,7 @@ export class ReluOperation extends Operation {
 
   backward() {
     // dX = dy (.) STEP(10.0 * Y)
-    this.gpu.executeMulStep(this.y, 10.0, this.dy, this.dx);
+    // y  = a * STEP(k * b)
+    this.gpu.executeMulStep({ a: this.dy, k: 1, b: this.y, y: this.dx });
   }
 }

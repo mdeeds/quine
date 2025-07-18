@@ -11,6 +11,6 @@ out vec4 fragColor; // Output color (the computed matrix element)
 // Implements Matrix addition (elementwise) 
 // Y = RELU(X)
 void main() {
-  float r = (texture(matrix, texCoord).r) > 0.0 ? 1.0 : 0.0;
+  float r = max(0.0, texture(matrix, texCoord).r);
   fragColor = vec4(r, 0.0, 0.0, 1.0);
 }

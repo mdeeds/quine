@@ -39,13 +39,13 @@ async function buildIdentityGraph(graph) {
 
   graph.postMessage({
     type: 'setValues', payload: {
-      name: 'X', values: [0, 1, 2, 3, 2, 3]
+      name: 'X', values: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
     }
   });
   graph.createNode('E', { height: 3, width: 2, nodeType: 'output' });
   graph.postMessage({
     type: 'setValues', payload: {
-      name: 'E', values: [0, 1, 2, 3, 2, 3]
+      name: 'E', values: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
     }
   });
   graph.loss({ actual: 'Y', expected: 'E' });

@@ -27,4 +27,5 @@ void main() {
   float error = actual - expected;
 
   fragColor = vec4(RECIP_HALF_PI * atan(error * k), 0.0, 0.0, 1.0);
+  
 }

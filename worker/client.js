@@ -34,6 +34,13 @@ export class GraphClient {
     });
   }
 
+  multiply({ x, w, y }) {
+    this.graph.postMessage({
+      type: 'multiply',
+      payload: { x, w, y }
+    });
+  }
+
   multiplyAdd({ x, w, b, y }) {
     this.graph.postMessage({
       type: 'multiplyAdd',
@@ -139,6 +146,7 @@ export class GraphClient {
     const components = await this.getComponentsInBuildOrder();
     for (const component of components) {
       if (component.type === 'node') {
+        // console.log(`Display node: ${component.name}`);
         await this.addNodeInfo(component.name, d);
       }
     }
@@ -153,23 +161,25 @@ export class GraphClient {
       container.appendChild(textMatrix.div);
     }
     const { values, gradients } = await this.getValues(nodeName);
+    // console.log(`Updating node: ${nodeName}`);
+    // console.log('Values:', values);
+    // console.log('Gradients:', gradients);
     textMatrix.update(values, gradients);
     return;
   }
 
   async runForward() {
     this.graph.postMessage({ type: 'forward' });
-    this.finish();
-
+    await this.finish();
     await this.displayAllNodes();
   }
   async calculateGradients() {
     this.graph.postMessage({ type: 'calculateGradient', payload: {} });
-    this.finish();
+    await this.finish();
     await this.displayAllNodes();
   }
   async applyGradients() {
-    this.graph.postMessage({ type: 'applyGradient', payload: { learningRate: 0.01 } });
+    this.graph.postMessage({ type: 'applyGradient', payload: { learningRate: 0.05 } });
     this.finish();
     await this.displayAllNodes();
   }
@@ -177,9 +187,9 @@ export class GraphClient {
   async runX(n) {
     for (let i = 0; i < n; i++) {
       this.graph.postMessage({ type: 'forward' });
-      this.graph.postMessage({ type: 'backwardAndAddGradient', payload: { learningRate: 0.01 } });
+      this.graph.postMessage({ type: 'backwardAndAddGradient', payload: { learningRate: 0.05 } });
     }
-    this.finish();
+    await this.finish();
     await this.displayAllNodes();
   }
 

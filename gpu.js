@@ -724,7 +724,7 @@ class _MatrixLossProgram {
     gl.bindTexture(gl.TEXTURE_2D, actual.texture);
     gl.uniform1i(this.matrixActual_Loc, 1); // texture unit 1
 
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); // Draw the 
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); // Draw the quad
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 }
@@ -771,7 +771,7 @@ class _MatrixUpdateProgram {
     gl.uniform1i(this.widthLoc, a.width);
     gl.uniform1i(this.heightLoc, a.height);
     gl.uniform1f(this.alpha_Loc, alpha);
-    gl.uniform1f(this.r_Loc, 0.1);  // noise level
+    gl.uniform1f(this.r_Loc, 0.0);  // noise level
     gl.uniform1f(this.t_Loc, this.t);  // pointiness factor
     this.t += Math.random();
 

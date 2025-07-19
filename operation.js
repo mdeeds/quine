@@ -46,7 +46,7 @@ class Operation {
  * based on the current activations in `x`
  */
 export class MatrixMultiplyOperation extends Operation {
-  constructor(gpu, w, dw, x, dx, y, dy) {
+  constructor(gpu, { x, w, y }, { dx, dw, dy }) {
     super();
     this.gpu = gpu;
     this.w = w;

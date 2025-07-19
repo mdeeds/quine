@@ -55,6 +55,10 @@ self.onmessage = (/** @type {MessageEvent<WorkerRequest>} */ e) => {
         graph.createNode(payload.name, payload.spec);
         break;
       }
+      case 'multiply': {
+        graph.multiply(payload);
+        break;
+      }
       case 'multiplyAdd': {
         graph.multiplyAdd(payload);
         break;

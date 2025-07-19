@@ -2,7 +2,7 @@
 
 import { Gpu } from './gpu.js';
 import { LogicalMatrix } from './matrix.js';
-import { FullyConnectedOperation, ReluOperation } from './operation.js';
+import { FullyConnectedOperation, MatrixMultiplyOperation, ReluOperation } from './operation.js';
 /** @typedef {import('./worker/api.js').MatrixSpec} MatrixSpec */
 /** @typedef {import('./worker/api.js').ComponentDescription} ComponentDescription */
 
@@ -47,6 +47,26 @@ export class Graph {
     this.components.push(node);
     this.allNodes.add(node);
     this.nodeMap.set(name, node);
+  }
+
+  /**
+ * 
+ * @param {{x: string!, w: string!, y: string!}} args
+ */
+  multiply({ x, w, y }) {
+    const xNode = this.nodeMap.get(x);
+    const wNode = this.nodeMap.get(w);
+    const yNode = this.nodeMap.get(y);
+    if (!xNode || !wNode || !yNode) {
+      throw new Error("Invalid node name.");
+    }
+
+    const connection = new Multiply(this.gpu, { x: xNode, w: wNode, y: yNode });
+    this.components.push(connection);
+    this.allConnections.add(connection);
+    this.dependencies.push({ source: xNode, target: connection });
+    this.dependencies.push({ source: wNode, target: connection });
+    this.dependencies.push({ source: connection, target: yNode });
   }
 
   /**
@@ -99,6 +119,7 @@ export class Graph {
     if (!actualNode || !expectedNode) {
       throw new Error("Invalid node name.");
     }
+    console.log(`Creating loss: ${actual} -> ${expected}`);
     this.lossPairs.push({ actual: actualNode, expected: expectedNode });
   }
 
@@ -163,8 +184,28 @@ export class Graph {
 
 
   calculateGradient() {
-    // Compute the loss and put the gradient into the output node.
+    const components = this.getComponentsInBuildOrder().reverse();
+
+    // Clear gradients on all Nodes
+    for (const component of components) {
+      if (this.allNodes.has(component)) {
+        // Nodes have a `gradient`.  Set these to zero.
+        const node = component;  /** @type {Node} */
+        const matrix = node.gradient;  /** @type {LogicalMatrix} */
+        const fbo = this.gpu.context.fbo;
+        const gl = this.gpu.gl;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, matrix.texture, 0);
+        gl.clearColor(0.0, 0.0, 0.0, 0.0);
+        gl.viewport(0, 0, matrix.width, matrix.height);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      }
+    }
+
+    // Set gradient for all nodes with loss
     for (const { actual, expected } of this.lossPairs) {
+      // console.log(`Calculating loss: ${actual.name} -> ${expected.name}`);
       this.gpu.executeLoss(
         {
           actual: actual.value,
@@ -173,27 +214,7 @@ export class Graph {
         });
     }
 
-    const components = this.getComponentsInBuildOrder().reverse();
-
-    // Clear gradients on all non-output nodes.
-    for (const component of components) {
-      if (this.allNodes.has(component)) {
-        // Nodes have a `gradient`.  Set these to zero.
-        const node = component;  /** @type {Node} */
-        if (node.spec.nodeType != 'output') {
-          const matrix = node.gradient;  /** @type {LogicalMatrix} */
-          const fbo = this.gpu.context.fbo;
-          const gl = this.gpu.gl;
-          gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-          gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, matrix.texture, 0);
-          gl.clearColor(0.0, 0.0, 0.0, 0.0);
-          gl.viewport(0, 0, matrix.width, matrix.height);
-          gl.clear(gl.COLOR_BUFFER_BIT);
-          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        }
-      }
-    }
-    // Compute and apply the gradients
+    // Back-propagate all gradients through all connections
     for (const component of components) {
       if (this.allConnections.has(component)) {
         const connection = component;  /** @type {Connection} */
@@ -204,7 +225,7 @@ export class Graph {
 
   applyGradient(learningRate) {
     const components = this.getComponentsInBuildOrder().reverse();
-    // Compute and apply the gradients
+    // Apply the gradients to all 'train' enabled nodes.
     for (const component of components) {
       if (!this.allConnections.has(component) && component['addGradient']) {
         const node = component;  /** @type {Node} */
@@ -303,6 +324,26 @@ export class Connection {
 
   addGradient(learningRate) {
     this.operation.addGradient(learningRate);
+  }
+}
+
+export class Multiply extends Connection {
+  /**
+   * Arranges y = wx in the graph.
+   * @param {Gpu!} gpu
+   * @param {{x: Node!, w: Node!, y: Node!}} args 
+   */
+  constructor(gpu, { x, w, y }) {
+    super(new MatrixMultiplyOperation(gpu,
+      { x: x.value, w: w.value, y: y.value },
+      { dx: x.gradient, dw: w.gradient, dy: y.gradient }));
+    this.w = w;
+    this.x = x;
+    this.y = y;
+  }
+
+  getDetail() {
+    return `${this.y.name} = ${this.w.name} * ${this.x.name}`;
   }
 }
 

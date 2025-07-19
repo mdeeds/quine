@@ -19,15 +19,13 @@ uniform int B_width;
 out vec4 fragColor; // Output color (the computed matrix element)
 
 void main() {
+    int B_height = A_width;
     // Determine the current row and column of the output matrix C
     // texCoord.x maps to column, texCoord.y maps to row
     // Output matrix C has dimensions B_width x A_height
     // Do not subtract 0.5 here for the half-texel offset; trunc does the right thing.
     int colC = int(texCoord.x * float(B_width)); 
     int rowC = int(texCoord.y * float(A_height));
-
-    float sum = 0.0;
-    int B_height = A_width;
 
     // Pre-calculate the increments for the texture coordinates to avoid division in the loop.
     // d_texCoordA corresponds to moving 1 step in k (the x-direction for matrix A).
@@ -40,6 +38,7 @@ void main() {
     vec2 texCoordB = vec2((float(colC) + 0.5) / float(B_width), 0.5 / float(B_height));
 
     // Perform the dot product for the current element C[colC][rowC]
+    float sum = 0.0;
     for (int kk = 0; kk < A_width; ++kk) {
         float elementA = texture(matrixA, texCoordA).r;
         float elementB = texture(matrixB, texCoordB).r;

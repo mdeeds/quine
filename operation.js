@@ -72,8 +72,8 @@ export class MatrixMultiplyOperation extends Operation {
    *   The result is accumulated into dx.
    */
   backward() {
-    this.gpu.executeMatrixMultiplyT2(this.dy, this.x, this.dw);
-    this.gpu.executeMatrixMultiplyT1(this.w, this.dy, this.dx);
+    this.gpu.executeMatrixMultiplyT1(this.x, this.dy, this.dw);
+    this.gpu.executeMatrixMultiplyT2(this.dy, this.w, this.dx);
   }
 
 }

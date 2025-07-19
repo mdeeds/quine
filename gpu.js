@@ -584,6 +584,10 @@ class _MatrixMultiplyProgram extends _ABCProgram {
    * @param {LogicalMatrix!} c 
    */
   execute(a, b, c) {
+    if (a.width !== b.height) {
+      throw new Error(
+        `Matrix dimensions mismatch: A's width (${a.width}) must equal B's height (${b.height}).`);
+    }
     const gl = this.context.gl;
     this._preambleABC();
 

@@ -58,7 +58,7 @@ export class MatrixMultiplyOperation extends Operation {
   }
 
   forward() {
-    this.gpu.executeMatrixMultiply(this.w, this.x, this.y);
+    this.gpu.executeMatrixMultiply(this.x, this.w, this.y);
   }
 
 

@@ -45,7 +45,7 @@ void main() {
     vec2 texCoordB = vec2((float(colC) + 0.5) / float(B_width), 0.5 / float(B_height));
 
     // Perform the dot product for the current element C[colC][rowC]
-    for (int k = 0; k < A_width; ++k) {
+    for (int k = 0; k < A_height; ++k) {
         float elementA = texture(matrixA, texCoordA).r;
         float elementB = texture(matrixB, texCoordB).r;
         sum += elementA * elementB;

@@ -9,10 +9,7 @@ class GraphTest {
     this.init();
   }
 
-  async init() {
-    console.log('Initializing...');
-    const graph = await GraphClient.create();
-
+  async buildXorGraph(graph) {
     // Construct a simple two-layer net.
 
     // Y1 = W1 X + B1
@@ -57,7 +54,25 @@ class GraphTest {
     });
 
     graph.loss({ actual: 'Y', expected: 'Expected' });
+  }
 
+
+  async init() {
+    console.log('Initializing...');
+    const graph = await GraphClient.create();
+    const urlParams = new URLSearchParams(window.location.search);
+    const graphType = urlParams.get('g');
+
+    if (graphType === 'xor') {
+      await this.buildXorGraph(graph);
+    } else {
+      // Handle other graph types or a default case
+      console.log('No specific graph type requested or unknown type.');
+      // Optionally, build a default graph or show an error
+    }
+
+
+    await this.buildXorGraph(graph);
     {
       const b = document.createElement('button');
       b.innerText = 'Forward';

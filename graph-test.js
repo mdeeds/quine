@@ -150,6 +150,25 @@ async function init() {
   }
 
   const graph = await GraphClient.create();
+
+  // Add a slider for learning rate
+  const learningRateDiv = document.createElement('div');
+  learningRateDiv.innerHTML = `
+    <label for="learningRateSlider">Learning Rate:</label>
+    <input type="range" id="learningRateSlider" min="0.01" max="1.0" value="0.05" step="0.01">
+    <span id="learningRateValue">0.05</span>
+  `;
+  document.body.appendChild(learningRateDiv);
+
+  const learningRateSlider = /** @type {HTMLInputElement} */ (document.getElementById('learningRateSlider'));
+  const learningRateValueSpan = /** @type {HTMLSpanElement} */ (document.getElementById('learningRateValue'));
+
+  learningRateSlider.oninput = () => {
+    learningRateValueSpan.textContent = learningRateSlider.value;
+  };
+
+  // Modify applyGradients and runX to use the slider value
+  const getLearningRate = () => parseFloat(learningRateSlider.value);
   await builder(graph);
   {
     const b = document.createElement('button');
@@ -166,21 +185,22 @@ async function init() {
   {
     const b = document.createElement('button');
     b.innerText = 'Apply';
-    b.onclick = graph.applyGradients.bind(graph);
+    b.onclick = graph.applyGradients.bind(graph, getLearningRate());
     document.body.appendChild(b);
   }
   {
     const b = document.createElement('button');
     b.innerText = 'run 10x';
-    b.onclick = graph.runX.bind(graph, 10);
+    b.onclick = graph.runX.bind(graph, 10, getLearningRate());
     document.body.appendChild(b);
   }
   {
     const b = document.createElement('button');
     b.innerText = 'run 1000x';
-    b.onclick = graph.runX.bind(graph, 1000);
+    b.onclick = graph.runX.bind(graph, 1000, getLearningRate());
     document.body.appendChild(b);
   }
+
   await graph.displayAllNodes();
 }
 

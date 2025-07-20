@@ -775,8 +775,8 @@ class _MatrixUpdateProgram {
     gl.uniform1i(this.widthLoc, a.width);
     gl.uniform1i(this.heightLoc, a.height);
     gl.uniform1f(this.alpha_Loc, alpha);
-    gl.uniform1f(this.r_Loc, 0.0);  // noise level
-    gl.uniform1f(this.t_Loc, this.t);  // pointiness factor
+    gl.uniform1f(this.r_Loc, 0.01);  // noise level
+    gl.uniform1f(this.t_Loc, this.t);  // time value for noise function
     this.t += Math.random();
 
     // Bind the single, reusable FBO and attach the destination texture.

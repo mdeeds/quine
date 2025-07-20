@@ -118,10 +118,10 @@ export class LogicalMatrix {
 
   /**
    * @returns {number} a roughly gaussian number centered at zero with a 
-   * standard deviation about 0.1.
+   * standard deviation about 1.0.
    */
   _rn() {
-    return 0.1 * (Math.random() - Math.random() + Math.random() - Math.random());
+    return (Math.random() - Math.random() + Math.random() - Math.random());
   }
 
   /**

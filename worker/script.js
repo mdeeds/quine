@@ -52,7 +52,7 @@ self.onmessage = (/** @type {MessageEvent<WorkerRequest>} */ e) => {
     const requestId = (e.data && e.data.requestId) ? e.data.requestId : undefined;
     switch (type) {
       case 'createNode': {
-        graph.createNode(payload.name, payload.spec);
+        graph.createNode(payload.name, payload.spec, payload.initialization);
         break;
       }
       case 'multiply': {

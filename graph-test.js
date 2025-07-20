@@ -25,6 +25,25 @@ async function buildValueGraph(graph) {
   graph.loss({ actual: 'X', expected: 'Y' });
 }
 
+async function buildReluGraph(graph) {
+  graph.createNode('X', { height: 6, width: 1, nodeType: 'train' });
+  graph.createNode('Y', { height: 6, width: 1, nodeType: 'intermediate' })
+  graph.postMessage({ type: 'relu', payload: { x: 'X', y: 'Y' } });
+  graph.createNode('E', { height: 6, width: 1, nodeType: 'output' });
+
+  graph.postMessage({
+    type: 'setValues', payload: {
+      name: 'X', values: [2.0, 2.0, 2.0, 2.0, 2.0, -1.0]
+    }
+  });
+  graph.postMessage({
+    type: 'setValues', payload: {
+      name: 'E', values: [0.0, 0.0, 0.1, 0.2, 0.3, 0.4]
+    }
+  });
+  graph.loss({ actual: 'Y', expected: 'E' });
+}
+
 /**
  * @param {GraphClient!} graph;
  */
@@ -63,8 +82,8 @@ async function buildXorGraph(graph) {
   const outputSize = 1;  // 1 value per output
 
   graph.createNode('X', { height: batchSize, width: inputSize, nodeType: 'input' });
-  graph.createNode('W1', { height: inputSize, width: hiddenSize, nodeType: 'train' });
-  graph.createNode('B1', { height: 1, width: hiddenSize, nodeType: 'train' });
+  graph.createNode('W1', { height: inputSize, width: hiddenSize, nodeType: 'train' }, 'random');
+  graph.createNode('B1', { height: 1, width: hiddenSize, nodeType: 'train' }, 'random');
   graph.createNode('Y1', { height: batchSize, width: hiddenSize, nodeType: 'intermediate' });
 
   graph.multiplyAdd({ x: 'X', w: 'W1', b: 'B1', y: 'Y1' });
@@ -72,8 +91,8 @@ async function buildXorGraph(graph) {
   graph.createNode('R1', { height: batchSize, width: hiddenSize, nodeType: 'intermediate' });
   graph.postMessage({ type: 'relu', payload: { x: 'Y1', y: 'R1' } });
 
-  graph.createNode('W2', { height: hiddenSize, width: outputSize, nodeType: 'train' });
-  graph.createNode('B2', { height: outputSize, width: 1, nodeType: 'train' });
+  graph.createNode('W2', { height: hiddenSize, width: outputSize, nodeType: 'train' }, 'random');
+  graph.createNode('B2', { height: outputSize, width: 1, nodeType: 'train' }, 'random');
   graph.createNode('Y2', { height: batchSize, width: outputSize, nodeType: 'intermediate' });
 
   graph.multiplyAdd({ x: 'Y1', w: 'W2', b: 'B2', y: 'Y2' });
@@ -108,6 +127,9 @@ async function init() {
   switch (graphType) {
     case 'xor':
       await buildXorGraph(graph);
+      break;
+    case 'relu':
+      await buildReluGraph(graph);
       break;
     case 'value':
       await buildValueGraph(graph);

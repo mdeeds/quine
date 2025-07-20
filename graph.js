@@ -39,11 +39,11 @@ export class Graph {
    * @param {string!} name 
    * @param {MatrixSpec!} spec 
    */
-  createNode(name, spec) {
+  createNode(name, spec, initialization) {
     if (this.nodeMap.has(name)) {
       throw new Error(`Node with name ${name} already exists.`);
     }
-    const node = new Node(this.gpu, name, spec);
+    const node = new Node(this.gpu, name, spec, initialization);
     this.components.push(node);
     this.allNodes.add(node);
     this.nodeMap.set(name, node);
@@ -253,16 +253,18 @@ export class Node {
    * 
    * @param {Gpu!} gpu
    * @param {string!} name
-   * @param {MatrixSpec!} spec 
+   * @param {MatrixSpec!} spec
+   * @param {string!} initialization
    */
-  constructor(gpu, name, spec) {
+  constructor(gpu, name, spec, initialization) {
     this.gpu = gpu;
     this.name = name;
     this.spec = spec;
     // At some point, we might want to think about pooling these textures.
+    if (!initialization) { initialization = 'zero'; }
 
     /** @type {LogicalMatrix!} */
-    this.value = new LogicalMatrix(gpu.context, spec.width, spec.height, 'zero');
+    this.value = new LogicalMatrix(gpu.context, spec.width, spec.height, initialization);
 
     /** @type {LogicalMatrix!} */
     this.gradient = new LogicalMatrix(gpu.context, spec.width, spec.height, 'zero');

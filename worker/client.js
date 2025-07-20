@@ -26,11 +26,12 @@ export class GraphClient {
    * 
    * @param {string!} name 
    * @param {MatrixSpec!} spec 
+   * @param {string!} initialization
    */
-  createNode(name, spec) {
+  createNode(name, spec, initialization = 'zero') {
     this.graph.postMessage({
       type: 'createNode',
-      payload: { name, spec }
+      payload: { name, spec, initialization }
     });
   }
 

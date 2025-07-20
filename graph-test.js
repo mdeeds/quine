@@ -185,19 +185,31 @@ async function init() {
   {
     const b = document.createElement('button');
     b.innerText = 'Apply';
-    b.onclick = graph.applyGradients.bind(graph, getLearningRate());
+    b.onclick = () => {
+      const lr = getLearningRate();
+      console.log(`Learning rate: ${lr}`);
+      graph.applyGradients(lr);
+    }
     document.body.appendChild(b);
   }
   {
     const b = document.createElement('button');
     b.innerText = 'run 10x';
-    b.onclick = graph.runX.bind(graph, 10, getLearningRate());
+    b.onclick = () => {
+      const lr = getLearningRate();
+      console.log(`Learning rate: ${lr}`);
+      graph.runX(10, getLearningRate());
+    }
     document.body.appendChild(b);
   }
   {
     const b = document.createElement('button');
     b.innerText = 'run 1000x';
-    b.onclick = graph.runX.bind(graph, 1000, getLearningRate());
+    b.onclick = () => {
+      const lr = getLearningRate();
+      console.log(`Learning rate: ${lr}`);
+      graph.runX(1000, getLearningRate());
+    }
     document.body.appendChild(b);
   }
 

@@ -120,29 +120,37 @@ async function buildXorGraph(graph) {
 
 async function init() {
   console.log('Initializing...');
-  const graph = await GraphClient.create();
   const urlParams = new URLSearchParams(window.location.search);
   const graphType = urlParams.get('g');
 
-  switch (graphType) {
-    case 'xor':
-      await buildXorGraph(graph);
-      break;
-    case 'relu':
-      await buildReluGraph(graph);
-      break;
-    case 'value':
-      await buildValueGraph(graph);
-      break;
-    case 'identity':
-      await buildIdentityGraph(graph);
-      break;
-    default:
-      // Handle other graph types or a default case
-      console.log('No specific graph type requested or unknown type.');
-    // Optionally, build a default graph or show an error
+  const graphBuilders = {
+    'xor': buildXorGraph,
+    'relu': buildReluGraph,
+    'value': buildValueGraph,
+    'identity': buildIdentityGraph
+  };
+
+  const builder = graphBuilders[graphType];
+  if (!builder) {
+    console.log('No specific graph type requested or unknown type. Available graphs:');
+    const p = document.createElement('p');
+    p.innerText = 'Please select a graph type from the list below:';
+    document.body.appendChild(p);
+    const list = document.createElement('ul');
+    for (const type of Object.keys(graphBuilders)) {
+      const listItem = document.createElement('li');
+      const link = document.createElement('a');
+      link.href = `?g=${type}`;
+      link.textContent = type;
+      listItem.appendChild(link);
+      list.appendChild(listItem);
+    }
+    document.body.appendChild(list);
+    return;
   }
 
+  const graph = await GraphClient.create();
+  await builder(graph);
   {
     const b = document.createElement('button');
     b.innerText = 'Forward';

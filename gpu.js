@@ -672,7 +672,6 @@ class _MatrixMultiplyT2Program extends _MatrixMultiplyProgram {
   }
 }
 
-
 class _MatrixLossProgram {
   /**
  * 
@@ -683,7 +682,7 @@ class _MatrixLossProgram {
     /** @type {WebGLProgram} */ this.program = program;
     this.context = context;
     const gl = context.gl;
-    this.k = 1000.0;  // Pointiness factor.
+    this.k = 10.0;  // Pointiness factor.
 
     this.matrixExpected_Loc = gl.getUniformLocation(program, 'matrixExpected');
     this.matrixActual_Loc = gl.getUniformLocation(program, 'matrixActual');

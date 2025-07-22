@@ -22,7 +22,7 @@ float softStep(float x) {
   const float y0 = atan(x0);
   // atan has a range of (-PI/2, PI/2) so max is PI/2 - y0
   const float yMax = HALF_PI - y0;
-  return atan(x - x0) / yMax;
+  return abs(atan(x - x0) / yMax);
 }
 
 float hardStep(float x) {
@@ -34,7 +34,7 @@ void main() {
   float a = texture(matrixA, texCoord).r;
   float b = texture(matrixB, texCoord).r;
 
-  float stepB = hardStep(k * b);
+  float stepB = softStep(k * b);
   float y = a * stepB;
   fragColor = vec4(y, 0.0, 0.0, 1.0);
 }

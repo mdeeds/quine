@@ -200,6 +200,9 @@ export class GraphClient {
       this.graph.postMessage({ type: 'forward' });
       this.graph.postMessage({ type: 'backwardAndAddGradient', payload: { learningRate } });
     }
+    this.graph.postMessage({ type: 'forward' });
+    this.graph.postMessage({ type: 'calculateGradient', payload: {} });
+
     await this.finish();
     await this.displayAllNodes();
   }

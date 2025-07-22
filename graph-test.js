@@ -117,6 +117,71 @@ async function buildXorGraph(graph) {
   graph.loss({ actual: 'Y', expected: 'Expected' });
 }
 
+async function solveXor(graph) {
+  graph.postMessage({
+    type: 'setValues', payload: {
+      name: 'W1', values: [  // 2x3
+        -1, 1, 0,
+        1, -1, 0]
+    }
+  });
+  graph.postMessage({
+    type: 'setValues', payload: {
+      name: 'B1', values: [0, 0, 0]
+    }
+  });
+  graph.postMessage({
+    type: 'setValues', payload: {
+      name: 'W2', values: [1, 1, 0]
+    }
+  });
+  graph.postMessage({
+    type: 'setValues', payload: {
+      name: 'B2', values: [0]
+    }
+  });
+}
+
+
+async function buildConnectionTest(graph) {
+  graph.createNode('R1', { height: 4, width: 3, nodeType: 'intermediate' });
+  graph.createNode('W2', { height: 3, width: 1, nodeType: 'train' });
+  graph.createNode('B2', { height: 1, width: 1, nodeType: 'train' });
+  graph.createNode('Y2', { height: 4, width: 1, nodeType: 'intermediate' });
+  graph.createNode('E', { height: 4, width: 1, nodeType: 'output' });
+  graph.multiplyAdd({ x: 'R1', w: 'W2', b: 'B2', y: 'Y2' });
+  graph.loss({ actual: 'Y2', expected: 'E' });
+
+  graph.postMessage({
+    type: 'setValues', payload: {
+      name: 'R1', values: [
+        0.36, 0, 0,
+        0.61, 2.22, 0.0,
+        1.38, 0.0, 0.0,
+        1.63, 2.03, 0.0]
+    }
+  });
+  graph.postMessage({
+    type: 'setValues', payload: {
+      name: 'W2', values: [0.10, 1.27, -1.01]
+    }
+  });
+  graph.postMessage({
+    type: 'setValues', payload: {
+      name: 'B2', values: [0.39]
+    }
+  });
+  graph.postMessage({
+    type: 'setValues', payload: {
+      name: 'E', values: [0.0, 1.0, 1.0, 0.0]
+    }
+  });
+}
+
+async function buildSolvedXorGraph(graph) {
+  await buildXorGraph(graph);
+  await solveXor(graph);
+}
 
 async function init() {
   console.log('Initializing...');
@@ -125,9 +190,11 @@ async function init() {
 
   const graphBuilders = {
     'xor': buildXorGraph,
+    'solution': buildSolvedXorGraph,
     'relu': buildReluGraph,
     'value': buildValueGraph,
-    'identity': buildIdentityGraph
+    'identity': buildIdentityGraph,
+    'connection': buildConnectionTest,
   };
 
   const builder = graphBuilders[graphType];

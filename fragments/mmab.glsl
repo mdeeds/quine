@@ -23,11 +23,12 @@ out vec4 fragColor; // Output color (the computed matrix element)
 
 // Implements Matrix multipliaction and adds a bias vector.
 void main() {
-  int W_height = X_width;
+  // const int W_height = X_width;
+#define W_height X_width
 
   // Determine the current row and column of the output matrix Y
   // texCoord.x maps to column, texCoord.y maps to row
-  // Output matrix Y has dimensions X_width x W_height
+  // Output matrix Y has dimensions X_height x W_width
   // Do not subtract 0.5 here for the half-texel offset; trunc does the right thing.
   int colY = int(texCoord.x * float(W_width)); 
   int rowY = int(texCoord.y * float(X_height));
@@ -39,9 +40,9 @@ void main() {
                         0.5 / float(W_height));
 
   // Pre-calculate the increments for the texture coordinates to avoid division in the loop.
-  // d_texCoordX corresponds to moving 1 step in k (the y-direction for matrix X).
+  // d_texCoordX corresponds to moving 1 step in k (the x-direction for matrix X).
   vec2 d_texCoordX = vec2(1.0 / float(X_width), 0.0);
-  // d_texCoordW corresponds to moving 1 step in k (the x-direction for matrix W).
+  // d_texCoordW corresponds to moving 1 step in k (the y-direction for matrix W).
   vec2 d_texCoordW = vec2(0.0, 1.0 / float(W_height));
 
   // The output matrix is the same width as the bias, so we choose the bias
@@ -51,7 +52,7 @@ void main() {
   // Start the sum with the bias. It is in red channel of matrixB
   float sum = texture(matrixB, texCoordB).r;
   // Perform the dot product for the current element Y[colY][rowY]
-  for (int k = 0; k < W_width; ++k) {
+  for (int k = 0; k < X_width; ++k) {
       float elementX = texture(matrixX, texCoordX).r;
       float elementW = texture(matrixW, texCoordW).r;
       sum += elementX * elementW;

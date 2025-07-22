@@ -462,18 +462,18 @@ class _MatrixMultiplyAddBiasProgram {
   execute({ x, w, b, y }) {
     // y = xw + b
     if (x.width !== w.height) {
-      throw new Error(`Matrix dimension mismatch: W's width (${x.width}) must equal X's height (${w.height}).`);
+      throw new Error(`Matrix dimension mismatch: X's width (${x.width}) must equal W's height (${w.height}).`);
     }
-    if (x.height != y.height) {
-      throw new Error(`Matrix dimension mismatch: W's height (${w.height}) must equal Y's height (${y.height}).`);
+    if (x.height !== y.height) {
+      throw new Error(`Matrix dimension mismatch: X's height (${x.height}) must equal Y's height (${y.height}).`);
     }
-    if (w.width != y.width) {
-      throw new Error(`Matrix dimension mismatch: X's width (${x.width}) must equal Y's width (${y.width}).`);
+    if (w.width !== y.width) {
+      throw new Error(`Matrix dimension mismatch: W's width (${w.width}) must equal Y's width (${y.width}).`);
     }
-    if (b.height != 1) {
+    if (b.height !== 1) {
       throw new Error(`Matrix dimension mismatch: B's height (${b.height}) must equal 1.`);
     }
-    if (b.width != y.width) {
+    if (b.width !== y.width) {
       throw new Error(`Matrix dimension mismatch: B's width (${b.width}) must equal Y's width (${y.width}).`);
     }
     const gl = this.context.gl;

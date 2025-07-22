@@ -62,6 +62,11 @@ void main() {
       texCoordW += d_texCoordW;
   }
 
+  // If sum is undefined or NaN, set it to 255.0
+  if (isnan(sum)) {
+    sum = 255.0;
+  }
+
   // Output the computed element.  Output should be F16R
   fragColor = vec4(sum, 0.0, 0.0, 1.0); // Store only in red channel for R32F texture    
 }

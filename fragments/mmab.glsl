@@ -32,17 +32,18 @@ void main() {
   int colY = int(texCoord.x * float(W_width)); 
   int rowY = int(texCoord.y * float(X_height));
 
+  // Calculate the starting texture coordinates for k=0, sampling the center of the texel.
+  vec2 texCoordX = vec2(0.5 / float(X_width),
+                        (float(rowY) + 0.5) / float(X_height));
+  vec2 texCoordW = vec2((float(colY) + 0.5) / float(W_width),
+                        0.5 / float(W_height));
+
   // Pre-calculate the increments for the texture coordinates to avoid division in the loop.
   // d_texCoordX corresponds to moving 1 step in k (the y-direction for matrix X).
   vec2 d_texCoordX = vec2(1.0 / float(X_width), 0.0);
   // d_texCoordW corresponds to moving 1 step in k (the x-direction for matrix W).
   vec2 d_texCoordW = vec2(0.0, 1.0 / float(W_height));
 
-  // Calculate the starting texture coordinates for k=0, sampling the center of the texel.
-  vec2 texCoordX = vec2(0.5 / float(X_width),
-                        (float(rowY) + 0.5) / float(X_height));
-  vec2 texCoordW = vec2((float(colY) + 0.5) / float(W_width),
-                        0.5 / float(W_height));
   // The output matrix is the same width as the bias, so we choose the bias
   // using the input coordinate.
   vec2 texCoordB = vec2(texCoord.x, 0.5);

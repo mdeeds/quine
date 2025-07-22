@@ -359,8 +359,8 @@ export class MultiplyAdd extends Connection {
     super(new FullyConnectedOperation(gpu,
       { x: x.value, w: w.value, b: b.value, y: y.value },
       { dx: x.gradient, dw: w.gradient, db: b.gradient, dy: y.gradient }));
-    this.w = w;
     this.x = x;
+    this.w = w;
     this.b = b;
     this.y = y;
   }

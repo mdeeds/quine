@@ -78,7 +78,7 @@ async function buildXorGraph(graph) {
 
   const batchSize = 4;
   const inputSize = 2;  // 2 values per sample
-  const hiddenSize = 3;
+  const hiddenSize = 4;
   const outputSize = 1;  // 1 value per output
 
   graph.createNode('X', { height: batchSize, width: inputSize, nodeType: 'input' });
@@ -92,10 +92,10 @@ async function buildXorGraph(graph) {
   graph.postMessage({ type: 'relu', payload: { x: 'Y1', y: 'R1' } });
 
   graph.createNode('W2', { height: hiddenSize, width: outputSize, nodeType: 'train' }, 'random');
-  graph.createNode('B2', { height: outputSize, width: 1, nodeType: 'train' }, 'random');
+  graph.createNode('B2', { height: 1, width: outputSize, nodeType: 'train' }, 'random');
   graph.createNode('Y2', { height: batchSize, width: outputSize, nodeType: 'intermediate' });
 
-  graph.multiplyAdd({ x: 'Y1', w: 'W2', b: 'B2', y: 'Y2' });
+  graph.multiplyAdd({ x: 'R1', w: 'W2', b: 'B2', y: 'Y2' });
   graph.createNode('Y', { height: batchSize, width: outputSize, nodeType: 'output' });
   graph.postMessage({ type: 'relu', payload: { x: 'Y2', y: 'Y' } });
 
@@ -155,10 +155,10 @@ async function buildConnectionTest(graph) {
   graph.postMessage({
     type: 'setValues', payload: {
       name: 'R1', values: [
-        0.36, 0, 0,
-        0.61, 2.22, 0.0,
-        1.38, 0.0, 0.0,
-        1.63, 2.03, 0.0]
+        0, 0, 0,
+        1, 0, 0,
+        0, 1, 0,
+        0, 0, 1]
     }
   });
   graph.postMessage({
@@ -183,6 +183,43 @@ async function buildSolvedXorGraph(graph) {
   await solveXor(graph);
 }
 
+async function buildMMABGraph(graph) {
+
+  function rep(n) {
+    let a = [];
+    for (let i = 0; i < n; i++) {
+      a.push(1.0);
+    }
+    return a;
+  }
+  const batchSize = 4;
+  const hiddenSize = 3;
+  const outputSize = 1;  // 1 value per output
+
+  graph.createNode('R1', { height: batchSize, width: hiddenSize, nodeType: 'intermediate' });
+  graph.createNode('W2', { height: hiddenSize, width: outputSize, nodeType: 'intermediate' });
+  graph.createNode('B2', { height: 1, width: outputSize, nodeType: 'intermediate' });
+  graph.createNode('Y2', { height: batchSize, width: outputSize, nodeType: 'intermediate' });
+
+  graph.multiplyAdd({ x: 'R1', w: 'W2', b: 'B2', y: 'Y2' });
+
+  graph.postMessage({
+    type: 'setValues', payload: {
+      name: 'R1', values: [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0]
+    }
+  });
+  graph.postMessage({
+    type: 'setValues', payload: {
+      name: 'W2', values: [1, 1, 0]
+    }
+  });
+  graph.postMessage({
+    type: 'setValues', payload: {
+      name: 'B2', values: [0]
+    }
+  });
+}
+
 async function init() {
   console.log('Initializing...');
   const urlParams = new URLSearchParams(window.location.search);
@@ -190,6 +227,7 @@ async function init() {
 
   const graphBuilders = {
     'xor': buildXorGraph,
+    'mmab': buildMMABGraph,
     'solution': buildSolvedXorGraph,
     'relu': buildReluGraph,
     'value': buildValueGraph,

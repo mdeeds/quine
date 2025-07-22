@@ -20,11 +20,15 @@ float softStep(float x) {
   const float x0 = -3.0;
   const float y0 = atan(x0);
   const float yMax = HALF_PI - y0;
-
   return atan(x - x0) / yMax;
 }
 
+float hardStep(float x) {
+  if (x <= 0.0) return 0.1;
+  return 1.0;
+}
+
 void main() {
-  float x = 30.0 * texture(matrix, texCoord).r;
-  fragColor = vec4(softStep(x), 0.0, 0.0, 1.0);
+  float x = texture(matrix, texCoord).r;
+  fragColor = vec4(hardStep(x), 0.0, 0.0, 1.0);
 }

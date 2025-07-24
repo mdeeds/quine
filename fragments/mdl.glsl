@@ -3,7 +3,7 @@
 #define HALF_PI 1.57079632679
 #define RECIP_HALF_PI 0.636619772368
 
-precision highp float; // Good practice for precision
+precision mediump float; // Good practice for precision
 
 in vec2 texCoord; // Interpolated texture coordinate from the vertex shader
 

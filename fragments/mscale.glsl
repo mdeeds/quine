@@ -1,6 +1,6 @@
 #version 300 es // Use WebGL 2.0 compatible version
 
-precision highp float; // Good practice for precision
+precision mediump float; // Good practice for precision
 
 in vec2 texCoord; // Interpolated texture coordinate from the vertex shader
 

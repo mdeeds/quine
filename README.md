@@ -108,69 +108,224 @@ The size of the vocabulary will be a key hyperparameter, balancing the
 number of embeddings to learn against the efficiency of representing content with fewer tokens.
 
 ## Recursive Prompting Strategy
-A central and innovative aspect of Quine is its recursive prompting strategy, designed to navigate and reproduce the entire project content within a limited context window (1024 tokens). This process is expected to involve approximately five levels of recursion.
-Special Tokens: The model will learn to use special single tokens:
-<open-twisty>: Indicates the start of an expandable section in the prompt.
-<closed-twisty>: Indicates a collapsed, expandable section within the model's output.
-<response>: Delimits the prompt from the expected response during training, and the generated output during inference.
-<ellipsis>: May be used to indicate irrelevant or truncated content within a prompt.
-Prompt Structure and Generation:
-The design document, design-document.html, and the project's source code are structured in HTML using nested div elements, where each div represents a "twisty" section. The first element in a div (e.g., H1, H2) provides the twisty header.
-Automated Prompt Generation: A dedicated part of the Quine project's code, located in src/training/, will automatically generate the training prompts from this HTML structure.
-Recursive Expansion: During inference, the system, orchestrated by main.js, will perform a breadth-first search (BFS) to expand closed-twisty sections. The prompt will end with an <open-twisty> followed by its section header, instructing the model to generate that specific section.
-Context Accumulation: For lower-level expansions (e.g., function details), the prompt will accumulate context from parent twisties (overview, section, file, class descriptions). This accumulated context will be carefully managed to fit within the 1024-token context window.
-Token Budget per Layer: A strict token budget will be enforced for each level of recursion (e.g., 100 tokens for each of the first four parent layers, leaving 600 tokens for the bottom-most layer's response). If a section in the design document or source code exceeds its allotted budget, the training data generation process (within src/training/) will fail, necessitating a rewrite of the content to fit.
-Model-Generated Headers: The model itself (implemented in src/model/) will learn to generate the appropriate closed-twisty headers that can be "opened" for subsequent prompts. This is a key aspect of its "expert system" nature for self-quotation.
-Quine Generation Process:
-An initial prompt (e.g., "Project Quine open-twisty") is given to the model.
-The model generates the first section of the design document, ending with a list of closed-twisty headings.
-The application (main.js) selects an open-twisty heading (following BFS logic) and constructs the next prompt, including the parent context and the new open-twisty heading.
-This recursive process continues until no more closed-twisty sections are generated, indicating that the entire project content has been emitted. Aggressive "fail fast" error handling will be in place during inference, as 100% fidelity is the goal.
-7. Training Methodology
-The training of Quine will focus on achieving 100% self-quotation fidelity as its initial objective. This means the model will be trained to precisely reproduce its own source code and design document.
-Training Data Generation: The HTML-structured design document (design-document.html) and the project's source code (from src/) will be processed by a dedicated component within src/training/ to generate the prompt-response pairs for training. This component will handle the nesting and unnesting of sections and files.
-Token-by-Token Training: The model (from src/model/) will be trained in a standard language modeling fashion: given a sequence of tokens (including the prompt and partial response), it will predict the next token in the expected output sequence.
-Regularization and Stability:
-Gradient Noise: A small amount of noise (e.g., 0.01 standard deviation or uniform distribution) will be added to gradients during training. This acts as a regularizer, preventing the model from relying on overly precise or tiny weights and aiding in generalization in future iterations. The noise will not be applied during inference.
-Weight Capping: Weights will be capped at a range of approximately +/- 100 to prevent overflows or vanishing gradients. These caps, like the noise level, will be subject to experimentation to ensure optimal training for 100% fidelity.
-Quality Measure: The primary quality measure during this phase will be (matched_tokens / total_tokens), aiming for a perfect score. This metric will also guide hyperparameter tuning. Learned model weights will be stored in the data/ folder.
-8. Debugging and Validation
-Robust debugging tools are essential for a project of this complexity, especially given the custom, from-scratch implementation. These tools will primarily be implemented within the src/training/ subfolder.
-Weight and Gradient Visualization: A custom visualization tool will render the model's weights and gradients directly as RGB textures.
-Color Mapping: Red will represent positive values, and blue will represent negative values.
-Saturation: Lower saturation will indicate higher gradient magnitudes, allowing for quick identification of areas with strong learning signals.
-Hue Shift: Hue will shift towards blue for negative gradients and red for positive gradients, providing directional information.
-Perplexity and Alternate Tokens Display: A text-based display will show the perplexity (or entropy) for each generated token in an output sequence.
-Color Coding: Tokens will be color-coded based on their perplexity, highlighting areas where the model was less confident.
-Mouse-over Details: Mousing over a token will reveal alternate tokens that the model considered, particularly when perplexity is 2 or larger. This will be invaluable for diagnosing why the model might deviate from the target output.
-"Fail Fast" Error Handling: During inference for quine generation, the system will employ aggressive "fail fast" error handling. Any deviation from the expected 100% fidelity will result in a fatal error, forcing immediate attention to the bug rather than attempting workarounds.
-9. Future Work (Beyond Initial Scope)
+A central and innovative aspect of Quine is its recursive prompting strategy, designed to 
+navigate and reproduce the entire project content within a limited context window (1024 
+tokens). This process is expected to involve approximately five levels of recursion.
+
+### Special Tokens
+
+The model will learn to use special single tokens:
+
+* <open-twisty>: Indicates the start of an expandable section in the prompt.
+
+* <closed-twisty>: Indicates a collapsed, expandable section within the model's output.
+
+* <response>: Delimits the prompt from the expected response during training, and the generated output during inference.
+
+### Prompt Structure and Generation
+
+The design document, README.md, is structured with markdown headings that imply a 
+hierarchical relationship. All sections are "collapsed" except for the sections relevant
+to the current prompt. Relevant sections are the parent sections above the section that
+is being generated.
+
+The project's source code is also referenced in this design document using special tags.
+The source is broken down into hierarchical chunks using similar heading-like annotations
+in the source.
+
+#### Automated Prompt Generation
+A dedicated part of the Quine project's code, located in src/training/, will automatically 
+generate the training prompts from this HTML structure.
+
+##### Recursive Expansion
+During inference, the system, orchestrated by main.js, will perform a breadth-first search 
+(BFS) to expand closed-twisty sections. The prompt will end with an <open-twisty> followed by 
+its section header, instructing the model to generate that specific section.
+
+##### Context Accumulation
+For lower-level expansions (e.g., function details), the prompt will accumulate context from 
+parent twisties (overview, section, file, class descriptions). This accumulated context will 
+be carefully managed to fit within the 1024-token context window.
+
+##### Token Budget per Layer
+A strict token budget will be enforced for each level of recursion (e.g., 100 tokens for each 
+of the first four parent layers, leaving 600 tokens for the bottom-most layer's response). If 
+a section in the design document or source code exceeds its allotted budget, the training 
+data generation process (within src/training/) will fail, necessitating a rewrite of the 
+content to fit.
+
+##### Model-Generated Headers
+The model itself (implemented in src/model/) will learn to generate the appropriate closed-
+twisty headers that can be "opened" for subsequent prompts. This is a key aspect of its 
+"expert system" nature for self-quotation.
+
+#### Quine Generation Process
+An initial prompt (e.g., "<open-twisty> Project Quine") is given to the model.
+The model generates the first section of the design document, ending with a list of closed-
+twisty headings.
+
+The application (main.js) selects an open-twisty heading (following BFS logic) and constructs 
+the next prompt, including the parent context and the new open-twisty heading.
+This recursive process continues until no more closed-twisty sections are generated, 
+indicating that the entire project content has been emitted. Aggressive "fail fast" error 
+handling will be in place during inference, as 100% fidelity is the goal.
+
+## Training Methodology
+The training of Quine will focus on achieving 100% self-quotation fidelity as its initial 
+objective. This means the model will be trained to precisely reproduce its own source code and design document.
+
+### Training Data Generation
+The design document and the project's source code will be processed by a dedicated component 
+within src/training/ to generate the prompt-response pairs for training. This component will 
+handle the nesting and unnesting of sections and files.
+
+### Token-by-Token Training
+The model (from src/model/) will be trained in a standard language modeling fashion: given a 
+sequence of tokens (including the prompt and partial response), it will predict the next 
+token in the expected output sequence.
+
+#### Regularization and Stability:
+
+##### Gradient Noise
+A small amount of noise (e.g., 0.01 standard deviation or uniform distribution) will be added 
+to gradients during training. This acts as a regularizer, preventing the model from relying 
+on overly precise or tiny weights and aiding in generalization in future iterations. The 
+noise will not be applied during inference.
+
+##### Weight Capping
+Weights will be capped at a range of approximately +/- 1.7 to prevent overflows or vanishing 
+gradients. These caps, like the noise level, will be subject to experimentation to ensure 
+optimal training for 100% fidelity.
+
+#### Quality Measure
+The primary quality measure during this phase will be (matched_tokens / total_tokens), aiming 
+for a perfect score. This metric will also guide hyperparameter tuning. Learned model weights 
+will be stored in the data/ folder.
+
+## Debugging and Validation
+
+Robust debugging tools are essential for a project of this complexity, especially given the 
+custom, from-scratch implementation. These tools will primarily be implemented within the 
+src/training/ subfolder.
+
+Weight and Gradient Visualization: A custom visualization tool will render the model's 
+weights and gradients directly as RGB textures.
+
+### Color Mapping
+
+* Red will represent positive values, and blue will represent negative values.
+* Saturation: Lower saturation will indicate higher gradient magnitudes, allowing for quick
+    identification of areas with strong learning signals.
+* Hue Shift: Hue will shift towards blue for negative gradients and red for positive
+    gradients, providing directional information.
+* Perplexity and Alternate Tokens Display: A text-based display will show the perplexity (or
+    entropy) for each generated token in an output sequence.
+* Color Coding: Tokens will be color-coded based on their perplexity, highlighting areas
+    where the model was less confident.
+* Mouse-over Details: Mousing over a token will reveal alternate tokens that the model
+    considered, particularly when perplexity is 2 or larger. This will be invaluable for
+    diagnosing why the model might deviate from the target output.
+  
+### "Fail Fast" Error Handling: 
+
+During inference for quine generation, the system will employ aggressive "fail fast" error 
+handling. Any deviation from the expected 100% fidelity will result in a fatal error, forcing 
+immediate attention to the bug rather than attempting workarounds.
+
+## Future Work (Beyond Initial Scope)
 While the initial focus is on achieving 100% self-quotation fidelity, the project lays the groundwork for exciting future directions:
-Generalization: Expanding the model's capabilities beyond rote reproduction to generalize to new, unseen content.
-Self-Improvement: Enabling the model to "understand" its own code and design document, potentially leading to:
-Code Compilation: Producing code that compiles successfully.
-Function Writing: Generating new functions based on examples or descriptions.
-Code Execution Prediction: Predicting the outcome of small code snippets.
-Hyperparameter Tuning Prediction: Predicting the outcome of hyperparameter tuning experiments.
-Metrics for Quality: Developing more subtle metrics and benchmarks beyond simple fidelity to evaluate the model's understanding and improvement capabilities.
-Design Document as Input: Exploring how modifying the design document (design-document.html) can lead to meaningful, desired changes in the generated code.
-10. Development Philosophy
-A core philosophy of Project Quine is personal learning and deep understanding. This drives the decision to implement everything from scratch in JavaScript and WebGL, without relying on external libraries or frameworks. This hands-on approach ensures a thorough grasp of the underlying mechanisms of language models and GPGPU computation. The model's initial design as an "expert system" for self-quotation reflects this focused learning objective.
-11. Implementation
-The Quine project will adhere to a structured file organization to manage its various components. This structure facilitates development, debugging, and the automated generation of training data.
-Project Root Directory
-index.html: The main entry point for the application.
-main.js: The primary JavaScript file orchestrating the application logic, including WebGL context management, model inference, and recursive prompting.
-design-document.html: The HTML file containing the project's design document, structured with nested div elements for recursive expansion.
-src/:
-glsl/: This subfolder will contain all GLSL shader code (.vert, .frag) for the WebGL computations, including matrix operations, activation functions, and neural network layers.
-api/: This subfolder will house JavaScript modules that provide an interface to the low-level WebGL math operations. These modules will abstract away the direct GLSL calls, offering a more convenient API for the higher-level model implementation.
-training/: This subfolder will contain the JavaScript code responsible for:
+
+### Generalization: 
+
+Expanding the model's capabilities beyond rote reproduction to generalize to new, unseen content.
+
+### Self-Improvement
+
+Enabling the model to "understand" its own code and design document, potentially leading to:
+
+### Code Compilation
+Producing code that compiles successfully.
+
+### Function Writing
+
+Generating new functions based on examples or descriptions.
+
+### Code Execution Prediction
+
+Predicting the outcome of small code snippets.
+
+### Hyperparameter Tuning Prediction
+
+Predicting the outcome of hyperparameter tuning experiments.
+
+### Metrics for Quality
+
+Developing more subtle metrics and benchmarks beyond simple fidelity to evaluate the model's understanding and improvement capabilities.
+
+### Design Document as Input
+
+Exploring how modifying the design document (design-document.html) can lead to meaningful, desired changes in the generated code.
+
+## Development Philosophy
+
+A core philosophy of Project Quine is personal learning and deep understanding. This drives 
+the decision to implement everything from scratch in JavaScript and WebGL, without relying on 
+external libraries or frameworks. This hands-on approach ensures a thorough grasp of the 
+underlying mechanisms of language models and GPGPU computation. The model's initial design as 
+an "expert system" for self-quotation reflects this focused learning objective.
+
+## Implementation
+The Quine project will adhere to a structured file organization to manage its various 
+components. This structure facilitates development, debugging, and the automated generation 
+of training data.
+
+### Project Root Directory
+#### index.html: 
+The main entry point for the application.
+
+#### main.js:
+The primary JavaScript file orchestrating the application logic, including WebGL context management, model inference, and recursive prompting.
+
+#### README.md:
+
+The Markdown file containing the project's design document, structured with nested sections
+suitable for prompt expansion
+
+#### src/:
+
+#### glsl/: 
+
+This subfolder will contain all GLSL shader code (.frag) for the WebGL computations, 
+including matrix operations, activation functions, and neural network layers.
+
+#### api/: 
+
+This subfolder will house JavaScript modules that provide an interface to the low-level WebGL 
+math operations. These modules will abstract away the direct GLSL calls, offering a more 
+convenient API for the higher-level model implementation.
+
+#### training/:
+
+This subfolder will contain the JavaScript code responsible for:
+
+##### Parsing
 Parsing design-document.html and the project's source code.
+
+##### Tokenizing
 Implementing the BPE algorithm to generate the tokenization dictionary.
-Generating the structured prompt-response pairs for model training, adhering to the specified token budgets and recursive structure.
-The debugging and visualization tools described in Section 8.
-model/: This subfolder will contain the JavaScript code defining the transformer architecture, including the implementation of attention mechanisms, feed-forward networks, and the overall model forward and backward passes.
-utils/: General utility functions and helper classes used across the project.
-data/: A folder for storing generated token dictionaries and learned model weights.
-This file structure is designed to clearly separate concerns, making the project more manageable and comprehensible, especially given the goal of learning through a from-scratch implementation.
+
+Generating the structured prompt-response pairs for model training, adhering to the specified 
+token budgets and recursive structure.
+
+### model/
+This subfolder will contain the JavaScript code defining the transformer architecture, 
+including the implementation of attention mechanisms, feed-forward networks, and the overall 
+model forward and backward passes.
+
+### utils/
+General utility functions and helper classes used across the project.
+
+### data:
+A folder for storing generated token dictionaries and learned model weights.
+This is not quined or part of the training data.  It may be included in some versions
+of the distribution.
